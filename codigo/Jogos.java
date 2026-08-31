@@ -1,9 +1,13 @@
+import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.FileOutputStream;
+import java.io.FileReader;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.time.Month;
 
@@ -34,13 +38,13 @@ public class Jogos{
         this.game_id = -1;
         this.game_name = "";
 
-        int ano = 0000;
-        int mes = 0;
-        int dia = 0;
+        int ano = 1900;
+        int mes = 1;
+        int dia = 1;
         this.game_release = LocalDate.of(ano, Month.of(mes), dia);
 
-        this.game_price = 0.00;
-        this.game_genres = ""; 
+        this.game_price = 0.0f;
+        this.game_genres = new String[0]; 
         this.game_description = "";
     }
 
@@ -51,7 +55,7 @@ public class Jogos{
         dos.writeInt(this.game_id);
         
         // String fixa (100 caracteres)
-        // Preenche com espaços vazios à direita e passar de 100 para de inserir
+        // Preenche com espaços vazios à direita se passar de 100 ao inserir
         String nomeFormatado = String.format("%-100s", this.game_name);
         nomeFormatado = nomeFormatado.substring(0, 100);
         dos.writeUTF(nomeFormatado);
@@ -90,4 +94,34 @@ public class Jogos{
         
         this.game_description = dis.readUTF();
     }
+
+    public static Jogos parseJogo(String linha) {
+        String[] colunas = linha.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)");
+        if (colunas.length < 6) return null;
+
+        try {
+            int id = Integer.parseInt(colunas[0].trim());
+            String nome = colunas[1].trim();
+            String data = colunas[2].trim(); 
+            float preco = Float.parseFloat(colunas[3].trim());
+            
+            // Cuida de retirar os colchetes que vem como padrão
+            String generosL = colunas[4].replaceAll("[\\[\\]\"]", ""); 
+            // Separa os generos pela ,
+            String[] generos = generosL.split("\\s*,\\s*"); 
+            
+            // --- TRATAMENTO DA DESCRIÇÃO ---
+            String descricao = colunas[5].trim();
+            // Retirar aspas da descrição
+            if (descricao.startsWith("\"") && descricao.endsWith("\"")) {
+                descricao = descricao.substring(1, descricao.length() - 1);
+            }
+
+            return new Jogos(id, nome, data, preco, generos, descricao);
+            
+        } catch (Exception e) {
+            return null; 
+        }
+    }
+
 }
