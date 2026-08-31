@@ -9,6 +9,8 @@ import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.FileReader;
+import java.io.BufferedReader;
 import java.io.DataInputStream;
 import java.io.FileInputStream;
 import java.time.LocalDate;
@@ -20,6 +22,8 @@ import java.nio.file.Paths;
 import java.io.IOException;
 
 public class TP1 {
+    private static Path caminhoCSV = Paths.get("../dataBase/steam_games.csv");
+    private static String caminhoBinario = "../database/jogos.db";
     public static void main(String[] args) {
         Scanner sc = new Scanner(System.in);
         criaMenu();
@@ -30,6 +34,10 @@ public class TP1 {
                     leitorCSV();
                     break;
                 case 2:
+                    System.out.print("\nDigite o ID que deseja buscar: ");
+                    int id = sc.nextInt();
+                    System.out.println();
+                    lerRegistro(id);
                     break;
                 case 3:
                     break;
@@ -57,12 +65,12 @@ public class TP1 {
     }
 
     public static void leitorCSV() {
-        Path caminhoCSV = Paths.get("../dataBase/steam_games.csv");
-        String caminhoBinario = "../database/jogos.db";
+        
         int ultimoId = 0;
 
         try (BufferedReader leitor = Files.newBufferedReader(caminhoCSV)) {
             RandomAccessFile arq = new RandomAccessFile(caminhoBinario, "rw");
+            arq.writeInt(0);
             String linha;
             leitor.readLine();
             while ((linha = leitor.readLine()) != null) {
@@ -73,10 +81,10 @@ public class TP1 {
                     String nome = valores[1];
                     String lancamento = valores[2];
                     float preco = 0.0f;
-                    if(!valores[3].trim().isEmpty()){
-                        try{
+                    if (!valores[3].trim().isEmpty()) {
+                        try {
                             preco = Float.parseFloat(valores[3]);
-                        } catch(Exception e){
+                        } catch (Exception e) {
 
                         }
                     }
@@ -108,9 +116,53 @@ public class TP1 {
             arq.seek(0);
             arq.writeInt(ultimoId);
             System.out.println("\nBase de dados carregada com sucesso! Ultimo ID: " + ultimoId);
+            arq.close();
         } catch (IOException e) {
             System.out.println(e);
         }
     }
 
+    public static void lerRegistro(int id) {
+        RandomAccessFile arq;
+        int tam;
+        try {
+            arq = new RandomAccessFile(caminhoBinario, "r");
+            arq.seek(0);
+            int ultimoId = arq.readInt();
+            
+            if (id > ultimoId) {
+                System.out.println("ID não encontrado. :(");
+                return;
+            }
+            
+            while(arq.getFilePointer() < arq.length()){
+                byte lapide = arq.readByte();
+                tam = arq.readInt();
+                if(lapide == 0){
+                    byte[] ba = new byte[tam];
+                    arq.readFully(ba);
+
+                    ByteArrayInputStream bytes = new ByteArrayInputStream(ba);
+                    DataInputStream dados = new DataInputStream(bytes);
+
+                    int game_id = dados.readInt();
+                    if(game_id == id){
+                        Jogo temp = new Jogo();
+                        temp.fromByteArray(ba);
+                        System.out.println("Jogo encontrado!");
+                        System.out.println(temp.toString());
+                        arq.close();
+                        return;
+                    } 
+                } else {
+                    long posAtual = arq.getFilePointer();
+                    arq.seek(posAtual + tam);
+                }
+            }
+            System.out.println("ID não encontrado. :(");
+            arq.close();
+        } catch (Exception e) {
+            System.out.println("Erro durante a busca: " + e.getMessage());
+        }
+    }
 }

@@ -108,7 +108,7 @@ public class Jogo{
     public String toString() {
         DecimalFormat preco = new DecimalFormat("#,##0.00");
         String result = "\nID: " + game_id + "\nNome: " + game_name + "\nData de lançamento: " + game_release
-                + "\nPreço: USD" + preco.format(game_price) + "\nGeneros: " + String.join(", ", game_genres) + "\nDescrição: " + game_description;
+                + "\nPreço: US$ " + preco.format(game_price) + "\nGeneros: " + String.join(", ", game_genres) + "\nDescrição: " + game_description;
         
         return result;
     }
