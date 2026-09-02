@@ -29,19 +29,44 @@ public class TP1 {
         criaMenu();
         int opt = sc.nextInt();
         while (opt != 0) {
+            int id;
+            long retorno;
             switch (opt) {
                 case 1:
                     leitorCSV();
                     break;
                 case 2:
                     System.out.print("\nDigite o ID que deseja buscar: ");
-                    int id = sc.nextInt();
+                    id = sc.nextInt();
                     System.out.println();
-                    lerRegistro(id);
+                    retorno = buscador(id);
+                    if(retorno == -1){
+                        System.out.println("Registro não encontrado :(");
+                    } else{
+                        lerRegistro(retorno);
+                    }
                     break;
                 case 3:
+                    System.out.print("\nDigite o ID que deseja atualizar: ");
+                    id = sc.nextInt();
+                    System.out.println();
+                    retorno = buscador(id);
+                    if(retorno == -1){
+                        System.out.println("Registro não encontrado :(");
+                    } else{
+                        atualizaRegistro(retorno);
+                    }
                     break;
                 case 4:
+                    System.out.print("\nDigite o ID que deseja deletar: ");
+                    id = sc.nextInt();
+                    System.out.println();
+                    retorno = buscador(id);
+                    if(retorno == -1){
+                        System.out.println("Registro não encontrado! :(");
+                    } else{
+                        removerRegistro(retorno);
+                    }
                     break;
                 default:
                     System.out.println("Numero invalido!");
@@ -122,23 +147,24 @@ public class TP1 {
         }
     }
 
-    public static void lerRegistro(int id) {
+    public static long buscador(int id) {
         RandomAccessFile arq;
         int tam;
         try {
             arq = new RandomAccessFile(caminhoBinario, "r");
             arq.seek(0);
             int ultimoId = arq.readInt();
-            
+            long pos = arq.getFilePointer();
             if (id > ultimoId) {
-                System.out.println("ID não encontrado. :(");
-                return;
+                //System.out.println("ID não encontrado. :(");
+                arq.close();
+                return -1;
             }
-            
-            while(arq.getFilePointer() < arq.length()){
+
+            while ((pos = arq.getFilePointer()) < arq.length()) {
                 byte lapide = arq.readByte();
                 tam = arq.readInt();
-                if(lapide == 0){
+                if (lapide == 0) {
                     byte[] ba = new byte[tam];
                     arq.readFully(ba);
 
@@ -146,23 +172,111 @@ public class TP1 {
                     DataInputStream dados = new DataInputStream(bytes);
 
                     int game_id = dados.readInt();
-                    if(game_id == id){
-                        Jogo temp = new Jogo();
-                        temp.fromByteArray(ba);
-                        System.out.println("Jogo encontrado!");
-                        System.out.println(temp.toString());
+                    if (game_id == id) {
                         arq.close();
-                        return;
-                    } 
+                        return pos;
+                    }
                 } else {
                     long posAtual = arq.getFilePointer();
                     arq.seek(posAtual + tam);
                 }
             }
-            System.out.println("ID não encontrado. :(");
+            //System.out.println("ID não encontrado. :(");
             arq.close();
+            return -1;
         } catch (Exception e) {
             System.out.println("Erro durante a busca: " + e.getMessage());
+            return -1;
+        }
+    }
+    
+    public static void lerRegistro(long pointer) {
+        RandomAccessFile arq;
+        try {
+            arq = new RandomAccessFile(caminhoBinario, "r");
+            arq.seek(pointer);
+            byte lapide = arq.readByte();
+            int tam = arq.readInt();
+            byte[] ba = new byte[tam];
+            arq.readFully(ba);
+            Jogo temp = new Jogo();
+            temp.fromByteArray(ba);
+            System.out.println(temp.toString());
+            arq.close();
+        } catch (Exception e) {
+            System.out.println("Erro durante a leitura: " + e.getMessage());
+        }
+    }
+
+    public static void removerRegistro(long pointer) {
+        RandomAccessFile arq;
+        try {
+            arq = new RandomAccessFile(caminhoBinario, "rw");
+            arq.seek(pointer);
+            arq.writeByte(1);
+            System.out.println("Jogo deletado com sucesso! :D");
+            arq.close();
+        } catch (Exception e) {
+            System.out.println("Erro durante a remoção: " + e.getMessage());
+        }
+    }
+
+    public static Jogo solicitaDados(Jogo antigo) {
+        Scanner sc = new Scanner(System.in);
+        System.out.println("\nPor favor, digite os novos dados para o jogo!");
+        System.out.print("\nNovo nome: ");
+        String nome = sc.nextLine();
+        System.out.print("\nNova data de lançamento: ");
+        String lancamento = sc.nextLine();
+        System.out.print("\nNovo preço: ");
+        float preco = sc.nextFloat();
+        System.out.print("\nNovos generos (Ex: \"Casual, indie\"): ");
+        String generos = sc.nextLine();
+        System.out.print("\nNova descrição: ");
+        String descricao = sc.nextLine();
+        Jogo res = new Jogo(antigo.game_id, nome, lancamento, preco, generos, descricao);
+        return res;
+    }
+
+    public static void atualizaRegistro(long pointer) {
+        if (pointer < 0) {
+            System.out.println("Registro não encontrado para atualização.");
+            return;
+        }
+        RandomAccessFile arq;
+        try {
+            arq = new RandomAccessFile(caminhoBinario, "rw");
+            arq.seek(pointer);
+            byte lapide = arq.readByte();
+            int tam = arq.readInt();
+            byte[] ba = new byte[tam];
+            arq.readFully(ba);
+            
+            Jogo atual = new Jogo();
+            
+            atual.fromByteArray(ba);
+
+            Jogo atualizado = solicitaDados(atual);
+            byte[] novoBa = atualizado.toByteArray();
+
+            if(novoBa.length <= ba.length){
+                arq.seek(pointer);
+                arq.writeByte(0); // Byte da lápide: 0 = valido, 1 = excluido
+                arq.writeInt(ba.length);
+                arq.write(novoBa);
+            } else {
+                arq.seek(pointer);
+                arq.writeByte(1);
+                arq.seek(arq.length());
+                arq.writeByte(0); // Byte da lápide: 0 = valido, 1 = excluido
+                arq.writeInt(novoBa.length);
+                arq.write(novoBa);
+            }
+
+            System.out.println("");
+            arq.close();
+        } catch (Exception e) {
+            System.out.println("Erro durante a atualização: " + e.getMessage());
         }
     }
 }
