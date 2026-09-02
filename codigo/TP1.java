@@ -25,8 +25,7 @@ import java.io.IOException;
 
 public class TP1 {
     private static Path caminhoCSV = Paths.get("../dataBase/steam_games.csv");
-    private static String caminhoBinario = "dataBase/jogos.db";
-
+    private static String caminhoBinario = "../database/jogos.db";
     public static void main(String[] args) {
         Scanner sc = new Scanner(System.in);
         criaMenu();
@@ -72,12 +71,12 @@ public class TP1 {
                     }
                     break;
                 case 5:
-                    try {
+                    try{
                         chamaOrdenacao();
-                    } catch (Exception e) {
+                    }
+                    catch(Exception e){
                         System.out.println("Erro: " + e.getMessage());
                     }
-                    break;
                 default:
                     System.out.println("Numero invalido!");
             }
@@ -91,7 +90,7 @@ public class TP1 {
         String titulo = "\n-----------Steam Games DB----------";
         String barra = "-----------------------------------\n";
         String opcoes = String.format("\n%s\n%s\n%s\n%s\n%s\n%s", "[1] Carregar base de dados", "[2] Ler registro",
-                "[3] Atualizar registro", "[4] Deletar registro", "[5] Ordenar o Banco","[0] Sair");
+                "[3] Atualizar registro", "[4] Deletar registro","[5] Ordenacao Externa" ,"[0] Sair");
 
         System.out.println(titulo);
         System.out.println("Selecione:");
@@ -150,7 +149,7 @@ public class TP1 {
             }
             arq.seek(0);
             arq.writeInt(ultimoId);
-            System.out.println("\nBase de dados carregada. Ultimo ID: " + ultimoId);
+            System.out.println("\nBase de dados carregada com sucesso! Ultimo ID: " + ultimoId);
             arq.close();
         } catch (IOException e) {
             System.out.println(e);
@@ -191,14 +190,104 @@ public class TP1 {
                     arq.seek(posAtual + tam);
                 }
             }
-            System.out.println("ID não encontrado.");
+            //System.out.println("ID não encontrado. :(");
             arq.close();
             return -1;
         } catch (Exception e) {
-            System.out.println("Erro: " + e.getMessage());
+            System.out.println("Erro durante a busca: " + e.getMessage());
+            return -1;
+        }
+    }
+    
+    public static void lerRegistro(long pointer) {
+        RandomAccessFile arq;
+        try {
+            arq = new RandomAccessFile(caminhoBinario, "r");
+            arq.seek(pointer);
+            byte lapide = arq.readByte();
+            int tam = arq.readInt();
+            byte[] ba = new byte[tam];
+            arq.readFully(ba);
+            Jogo temp = new Jogo();
+            temp.fromByteArray(ba);
+            System.out.println(temp.toString());
+            arq.close();
+        } catch (Exception e) {
+            System.out.println("Erro durante a leitura: " + e.getMessage());
         }
     }
 
+    public static void removerRegistro(long pointer) {
+        RandomAccessFile arq;
+        try {
+            arq = new RandomAccessFile(caminhoBinario, "rw");
+            arq.seek(pointer);
+            arq.writeByte(1);
+            System.out.println("Jogo deletado com sucesso! :D");
+            arq.close();
+        } catch (Exception e) {
+            System.out.println("Erro durante a remoção: " + e.getMessage());
+        }
+    }
+
+    public static Jogo solicitaDados(Jogo antigo) {
+        Scanner sc = new Scanner(System.in);
+        System.out.println("\nPor favor, digite os novos dados para o jogo!");
+        System.out.print("\nNovo nome: ");
+        String nome = sc.nextLine();
+        System.out.print("\nNova data de lançamento: ");
+        String lancamento = sc.nextLine();
+        System.out.print("\nNovo preço: ");
+        float preco = sc.nextFloat();
+        System.out.print("\nNovos generos (Ex: \"Casual, indie\"): ");
+        String generos = sc.nextLine();
+        System.out.print("\nNova descrição: ");
+        String descricao = sc.nextLine();
+        Jogo res = new Jogo(antigo.game_id, nome, lancamento, preco, generos, descricao);
+        return res;
+    }
+
+    public static void atualizaRegistro(long pointer) {
+        if (pointer < 0) {
+            System.out.println("Registro não encontrado para atualização.");
+            return;
+        }
+        RandomAccessFile arq;
+        try {
+            arq = new RandomAccessFile(caminhoBinario, "rw");
+            arq.seek(pointer);
+            byte lapide = arq.readByte();
+            int tam = arq.readInt();
+            byte[] ba = new byte[tam];
+            arq.readFully(ba);
+            
+            Jogo atual = new Jogo();
+            
+            atual.fromByteArray(ba);
+
+            Jogo atualizado = solicitaDados(atual);
+            byte[] novoBa = atualizado.toByteArray();
+
+            if(novoBa.length <= ba.length){
+                arq.seek(pointer);
+                arq.writeByte(0); // Byte da lápide: 0 = valido, 1 = excluido
+                arq.writeInt(ba.length);
+                arq.write(novoBa);
+            } else {
+                arq.seek(pointer);
+                arq.writeByte(1);
+                arq.seek(arq.length());
+                arq.writeByte(0); // Byte da lápide: 0 = valido, 1 = excluido
+                arq.writeInt(novoBa.length);
+                arq.write(novoBa);
+            }
+
+            System.out.println("");
+            arq.close();
+        } catch (Exception e) {
+            System.out.println("Erro durante a atualização: " + e.getMessage());
+        }
+    }
 
 public static void chamaOrdenacao() throws Exception{
     OrdenacaoExterna ordenacao = new OrdenacaoExterna();
