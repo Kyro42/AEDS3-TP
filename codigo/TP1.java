@@ -32,19 +32,44 @@ public class TP1 {
         criaMenu();
         int opt = sc.nextInt();
         while (opt != 0) {
+            int id;
+            long retorno;
             switch (opt) {
                 case 1:
                     leitorCSV();
                     break;
                 case 2:
                     System.out.print("\nDigite o ID que deseja buscar: ");
-                    int id = sc.nextInt();
+                    id = sc.nextInt();
                     System.out.println();
-                    lerRegistro(id);
+                    retorno = buscador(id);
+                    if(retorno == -1){
+                        System.out.println("Registro não encontrado :(");
+                    } else{
+                        lerRegistro(retorno);
+                    }
                     break;
                 case 3:
+                    System.out.print("\nDigite o ID que deseja atualizar: ");
+                    id = sc.nextInt();
+                    System.out.println();
+                    retorno = buscador(id);
+                    if(retorno == -1){
+                        System.out.println("Registro não encontrado :(");
+                    } else{
+                        atualizaRegistro(retorno);
+                    }
                     break;
                 case 4:
+                    System.out.print("\nDigite o ID que deseja deletar: ");
+                    id = sc.nextInt();
+                    System.out.println();
+                    retorno = buscador(id);
+                    if(retorno == -1){
+                        System.out.println("Registro não encontrado! :(");
+                    } else{
+                        removerRegistro(retorno);
+                    }
                     break;
                 case 5:
                     try {
@@ -132,23 +157,24 @@ public class TP1 {
         }
     }
 
-    public static void lerRegistro(int id) {
+    public static long buscador(int id) {
         RandomAccessFile arq;
         int tam;
         try {
             arq = new RandomAccessFile(caminhoBinario, "r");
             arq.seek(0);
             int ultimoId = arq.readInt();
-            
+            long pos = arq.getFilePointer();
             if (id > ultimoId) {
-            System.out.println("ID não encontrado.");
-                return;
+                //System.out.println("ID não encontrado. :(");
+                arq.close();
+                return -1;
             }
-            
-            while(arq.getFilePointer() < arq.length()){
+
+            while ((pos = arq.getFilePointer()) < arq.length()) {
                 byte lapide = arq.readByte();
                 tam = arq.readInt();
-                if(lapide == 0){
+                if (lapide == 0) {
                     byte[] ba = new byte[tam];
                     arq.readFully(ba);
 
@@ -156,14 +182,10 @@ public class TP1 {
                     DataInputStream dados = new DataInputStream(bytes);
 
                     int game_id = dados.readInt();
-                    if(game_id == id){
-                        Jogo temp = new Jogo();
-                        temp.fromByteArray(ba);
-                        System.out.println("Jogo encontrado!");
-                        System.out.println(temp.toString());
+                    if (game_id == id) {
                         arq.close();
-                        return;
-                    } 
+                        return pos;
+                    }
                 } else {
                     long posAtual = arq.getFilePointer();
                     arq.seek(posAtual + tam);
@@ -171,6 +193,7 @@ public class TP1 {
             }
             System.out.println("ID não encontrado.");
             arq.close();
+            return -1;
         } catch (Exception e) {
             System.out.println("Erro: " + e.getMessage());
         }
