@@ -24,6 +24,7 @@ import java.io.IOException;
 public class TP1 {
     private static Path caminhoCSV = Paths.get("../dataBase/steam_games.csv");
     private static String caminhoBinario = "../database/jogos.db";
+
     public static void main(String[] args) {
         Scanner sc = new Scanner(System.in);
         criaMenu();
@@ -36,6 +37,9 @@ public class TP1 {
                     leitorCSV();
                     break;
                 case 2:
+                    insereRegistro();
+                    break;
+                case 3:
                     System.out.print("\nDigite o ID que deseja buscar: ");
                     id = sc.nextInt();
                     System.out.println();
@@ -46,7 +50,7 @@ public class TP1 {
                         lerRegistro(retorno);
                     }
                     break;
-                case 3:
+                case 4:
                     System.out.print("\nDigite o ID que deseja atualizar: ");
                     id = sc.nextInt();
                     System.out.println();
@@ -57,7 +61,7 @@ public class TP1 {
                         atualizaRegistro(retorno);
                     }
                     break;
-                case 4:
+                case 5:
                     System.out.print("\nDigite o ID que deseja deletar: ");
                     id = sc.nextInt();
                     System.out.println();
@@ -80,8 +84,8 @@ public class TP1 {
     public static void criaMenu() {
         String titulo = "\n-----------Steam Games DB----------";
         String barra = "-----------------------------------\n";
-        String opcoes = String.format("\n%s\n%s\n%s\n%s\n%s", "[1] Carregar base de dados", "[2] Ler registro",
-                "[3] Atualizar registro", "[4] Deletar registro", "[0] Sair");
+        String opcoes = String.format("\n%s\n%s\n%s\n%s\n%s\n%s", "[1] Carregar base de dados", "[2] Inserir registro" , "[3] Ler registro",
+                "[4] Atualizar registro", "[5] Deletar registro", "[0] Sair");
 
         System.out.println(titulo);
         System.out.println("Selecione:");
@@ -90,7 +94,7 @@ public class TP1 {
     }
 
     public static void leitorCSV() {
-        
+
         int ultimoId = 0;
 
         try (BufferedReader leitor = Files.newBufferedReader(caminhoCSV)) {
@@ -147,6 +151,30 @@ public class TP1 {
         }
     }
 
+    public static void insereRegistro() {
+        RandomAccessFile arq;
+        try {
+            arq = new RandomAccessFile(caminhoBinario, "rw");
+            arq.seek(0);
+            int ultimoId = arq.readInt();
+            arq.seek(arq.length());
+            Jogo jogo = new Jogo();
+            jogo.setID(++ultimoId);
+            jogo = solicitaDados(jogo);
+            byte[] ba = jogo.toByteArray();
+            int tam = ba.length;
+            arq.writeByte(0); //lápide. 0 = registro valido, 1 = registro excluido
+            arq.writeInt(tam);
+            arq.write(ba);
+            arq.seek(0);
+            arq.writeInt(ultimoId);
+            System.out.println("Jogo inserido com sucesso! id: " + ultimoId);
+            arq.close();
+        }catch(Exception e){
+            System.out.println(e.getMessage());
+        }
+    }
+
     public static long buscador(int id) {
         RandomAccessFile arq;
         int tam;
@@ -189,7 +217,43 @@ public class TP1 {
             return -1;
         }
     }
-    
+ 
+    public static int achaPenultimoId() {
+        int penultimoId = -1, maior = -1;
+        int idAtual, ultimoId;
+        try(RandomAccessFile arq = new RandomAccessFile(caminhoBinario, "r");){
+            arq.seek(0);
+            ultimoId = arq.readInt();
+            long pos;
+            while ((pos = arq.getFilePointer()) < arq.length()) {
+                byte lapide = arq.readByte();
+                int tam = arq.readInt();
+                if (lapide == 0) {
+                    byte[] ba = new byte[tam];
+                    arq.readFully(ba);
+
+                    ByteArrayInputStream bytes = new ByteArrayInputStream(ba);
+                    DataInputStream dados = new DataInputStream(bytes);
+
+                    idAtual = dados.readInt();
+
+                    if (idAtual > maior) {
+                        penultimoId = maior;
+                        maior = idAtual;
+                    }else if(idAtual > penultimoId && idAtual < maior){
+                        penultimoId = idAtual;
+                    }
+                } else {
+                    long posAtual = arq.getFilePointer();
+                    arq.seek(posAtual + tam);
+                }
+            }
+        } catch (Exception e) {
+            System.out.println("Erro procurando penultimo ID: " + e.getMessage());
+        }
+        return penultimoId;
+    }
+
     public static void lerRegistro(long pointer) {
         RandomAccessFile arq;
         try {
@@ -212,9 +276,22 @@ public class TP1 {
         RandomAccessFile arq;
         try {
             arq = new RandomAccessFile(caminhoBinario, "rw");
+            arq.seek(0);
+            int ultimoId = arq.readInt();
             arq.seek(pointer);
             arq.writeByte(1);
+            int tam = arq.readInt();
+            byte[] ba = new byte[tam];
+            arq.readFully(ba);
+            Jogo jogo = new Jogo();
+            jogo.fromByteArray(ba);
+            if(jogo.game_id == ultimoId){
+                ultimoId = achaPenultimoId();
+                arq.seek(0);
+                arq.writeInt(ultimoId);
+            }
             System.out.println("Jogo deletado com sucesso! :D");
+            System.out.println("Ultimo ID: " + ultimoId);
             arq.close();
         } catch (Exception e) {
             System.out.println("Erro durante a remoção: " + e.getMessage());
@@ -223,16 +300,17 @@ public class TP1 {
 
     public static Jogo solicitaDados(Jogo antigo) {
         Scanner sc = new Scanner(System.in);
-        System.out.println("\nPor favor, digite os novos dados para o jogo!");
-        System.out.print("\nNovo nome: ");
+        System.out.println("\nPor favor, digite os dados para o jogo!");
+        System.out.print("\nNome: ");
         String nome = sc.nextLine();
-        System.out.print("\nNova data de lançamento: ");
+        System.out.print("\nData de lançamento (yyyy-mm-dd): ");
         String lancamento = sc.nextLine();
-        System.out.print("\nNovo preço: ");
+        System.out.print("\nPreço (0,0): ");
         float preco = sc.nextFloat();
-        System.out.print("\nNovos generos (Ex: \"Casual, indie\"): ");
+        System.out.print("\nGeneros (Ex: \"Casual, indie\"): ");
+        sc.nextLine();
         String generos = sc.nextLine();
-        System.out.print("\nNova descrição: ");
+        System.out.print("\nDescrição: ");
         String descricao = sc.nextLine();
         Jogo res = new Jogo(antigo.game_id, nome, lancamento, preco, generos, descricao);
         return res;
@@ -273,7 +351,7 @@ public class TP1 {
                 arq.write(novoBa);
             }
 
-            System.out.println("");
+            System.out.println("\nJogo atualizado com sucesso! :D\n");
             arq.close();
         } catch (Exception e) {
             System.out.println("Erro durante a atualização: " + e.getMessage());

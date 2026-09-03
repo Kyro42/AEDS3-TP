@@ -59,6 +59,10 @@ public class Jogo{
         this.game_description = "";
     }
 
+    public void setID(int id){
+        this.game_id = id;
+    }
+
     public byte[] toByteArray() throws IOException {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         DataOutputStream dados = new DataOutputStream(baos);
