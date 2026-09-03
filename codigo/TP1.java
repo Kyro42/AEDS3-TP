@@ -1,4 +1,6 @@
+import java.util.ArrayList;
 import java.util.List;
+import java.util.PriorityQueue;
 import java.util.Scanner;
 import java.io.File;
 import java.io.IOException;
@@ -72,6 +74,13 @@ public class TP1 {
                         removerRegistro(retorno);
                     }
                     break;
+                case 6:
+                    try{
+                        chamaOrdenacao();
+                    }
+                    catch(Exception e){
+                        System.out.println("Erro: " + e.getMessage());
+                    }
                 default:
                     System.out.println("Numero invalido!");
             }
@@ -84,8 +93,8 @@ public class TP1 {
     public static void criaMenu() {
         String titulo = "\n-----------Steam Games DB----------";
         String barra = "-----------------------------------\n";
-        String opcoes = String.format("\n%s\n%s\n%s\n%s\n%s\n%s", "[1] Carregar base de dados", "[2] Inserir registro" , "[3] Ler registro",
-                "[4] Atualizar registro", "[5] Deletar registro", "[0] Sair");
+        String opcoes = String.format("\n%s\n%s\n%s\n%s\n%s\n%s\n%s", "[1] Carregar base de dados", "[2] Inserir registro" , "[3] Ler registro",
+                "[4] Atualizar registro", "[5] Deletar registro","[6] Ordenar registros" , "[0] Sair");
 
         System.out.println(titulo);
         System.out.println("Selecione:");
@@ -357,4 +366,150 @@ public class TP1 {
             System.out.println("Erro durante a atualização: " + e.getMessage());
         }
     }
+
+public static void chamaOrdenacao() throws Exception{
+    OrdenacaoExterna ordenacao = new OrdenacaoExterna();
+    long tempoInicio = System.currentTimeMillis();
+    int arquivos = ordenacao.criaArquivos(10000);
+    ordenacao.intercalacao(arquivos);
+    long tempoFim = System.currentTimeMillis();
+            System.out.println("Tempo total: " + (tempoFim - tempoInicio) + " ms");
+}
+
+public static class OrdenacaoExterna {
+
+    
+    public int criaArquivos(int tamanho) throws Exception {
+        RandomAccessFile arquivoOriginal = new RandomAccessFile("dataBase/jogos.db", "r");
+        arquivoOriginal.seek(4); 
+
+        int numArqTemp = 1;
+        boolean fimDoArquivo = false;
+
+
+        while (!fimDoArquivo) {
+            List<Jogo> bm = new ArrayList<>();
+
+            // insere os jogos no array
+            for (int i = 0; i < tamanho; i++) {
+                if (arquivoOriginal.getFilePointer() < arquivoOriginal.length()) {
+                    Jogo jogo = lerProxJogo(arquivoOriginal);
+                    if (jogo != null) {
+                        bm.add(jogo);
+                    } else {
+                        i--; 
+                    }
+                } else {
+                    fimDoArquivo = true;
+                    break;
+                }
+            }
+
+            // ordena a lista na memória e salva no arquivo temporário
+            if (!bm.isEmpty()) {
+                // ordena pelo ID 
+                bm.sort((j1, j2) -> Integer.compare(j1.game_id, j2.game_id));
+
+                String nomeArquivoTemp = "dataBase/temp" + numArqTemp + ".db";
+                salvarTemp(bm, nomeArquivoTemp);
+                
+                numArqTemp++;
+            }
+        }
+        
+        arquivoOriginal.close();
+        
+        return numArqTemp - 1; // retorna quantos arquivos foram gerados
+    }
+
+
+    public void intercalacao(int qtdArqTemp) throws Exception {
+
+        RandomAccessFile[] arquivosTemps = new RandomAccessFile[qtdArqTemp];
+        Jogo[] jogosAtuais = new Jogo[qtdArqTemp];
+
+        // verifica o primeiro jogo de cada arquivo
+        for (int i = 0; i < qtdArqTemp; i++) {
+            arquivosTemps[i] = new RandomAccessFile("dataBase/temp" + (i + 1) + ".db", "r");
+            jogosAtuais[i] = lerProxJogo(arquivosTemps[i]);
+        }
+
+        RandomAccessFile arquivoFinal = new RandomAccessFile("dataBase/jogos_ordenado.db", "rw");
+        arquivoFinal.writeInt(0); 
+        int maiorId = 0;
+
+        while (true) {
+            int arqMenor = -1;
+            int menorId = 1000000000;
+
+            // procura o menor ID entre os jogos atuais de cada arquivo
+            for (int i = 0; i < qtdArqTemp; i++) {
+                if (jogosAtuais[i] != null && jogosAtuais[i].game_id < menorId) {
+                    menorId = jogosAtuais[i].game_id;
+                    arqMenor = i;
+                }
+            }
+
+            // se não achou nenhum, acabou os qruivos
+          if (arqMenor == -1) {
+                break;
+            }
+
+            // grava no arquivo final
+            Jogo menorJogo = jogosAtuais[arqMenor];
+            byte[] ba = menorJogo.toByteArray();
+            arquivoFinal.writeBoolean(false); 
+            arquivoFinal.writeInt(ba.length);
+            arquivoFinal.write(ba);
+
+            if (menorJogo.game_id > maiorId){ 
+                maiorId = menorJogo.game_id;
+            }
+
+            jogosAtuais[arqMenor] = lerProxJogo(arquivosTemps[arqMenor]);
+        }
+
+        arquivoFinal.seek(0);
+        arquivoFinal.writeInt(maiorId);
+        arquivoFinal.close();
+
+        // apaga os arquivos temporários
+        for (int i = 0; i < qtdArqTemp; i++) {
+            arquivosTemps[i].close();
+            new File("dataBase/temp" + (i + 1) + ".db").delete();
+        }
+
+        System.out.println("Intercalação concluída.");
+    }
+
+    // Auxiliares
+
+    private void salvarTemp(List<Jogo> bloco, String nomeArquivo) throws Exception {
+        RandomAccessFile rafTemp = new RandomAccessFile(nomeArquivo, "rw");
+        for (Jogo jogo : bloco) {
+            byte[] ba = jogo.toByteArray();
+            rafTemp.writeBoolean(false); 
+            rafTemp.writeInt(ba.length); 
+            rafTemp.write(ba);           
+        }
+        rafTemp.close();
+    }
+
+    private Jogo lerProxJogo(RandomAccessFile raf) throws Exception {
+        while (raf.getFilePointer() < raf.length()) {
+            boolean lapide = raf.readBoolean();
+            int tamanho = raf.readInt();
+            byte[] ba = new byte[tamanho];
+            raf.read(ba);
+
+            if (!lapide) {
+                Jogo jogo = new Jogo();
+                jogo.fromByteArray(ba);
+                return jogo;
+            }
+        }
+        return null;
+    }
+}
+
 }
