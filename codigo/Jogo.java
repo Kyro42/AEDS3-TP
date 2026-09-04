@@ -69,18 +69,18 @@ public class Jogo{
         
         dados.writeInt(this.game_id);
         
-        // String fixa (100 caracteres)
-        // Preenche com espaços vazios à direita e passar de 100 para de inserir
+        // string fixa (100 caracteres)
+        // preenche com espaços vazios à direita e passar de 100 para de inserir
         String nome = String.format("%-100s", this.game_name);
         nome = nome.substring(0, 100);
         dados.writeUTF(nome);
         
-        // Grava como um long 
+        // grava como um long 
         dados.writeLong(this.game_release.toEpochDay());
         
         dados.writeFloat(this.game_price);
         
-        // Junta o array de strings colocando o "-"
+        // junta o array de strings colocando o "-"
         String generos = String.join("-", this.game_genres);
         dados.writeUTF(generos);
         
@@ -94,15 +94,15 @@ public class Jogo{
 
         this.game_id = dis.readInt();
 
-        // Lê a string fixa de 100 caracteres e usa trim() para tirar os espaços extras
+        // lê a string fixa de 100 caracteres e usa trim() para tirar os espaços extras
         this.game_name = dis.readUTF().trim();
 
-        // Converte a data do long
+        // converte a data do long
         this.game_release = LocalDate.ofEpochDay(dis.readLong());
 
         this.game_price = dis.readFloat();
 
-        // Lê a string de gêneros e quebra ela de volta para um array usando o "-"
+        // lê a string de gêneros e quebra ela de volta para um array usando o "-"
         String stringGeneros = dis.readUTF();
         this.game_genres = stringGeneros.split("\\-");
 
