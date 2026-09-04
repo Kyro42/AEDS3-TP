@@ -1,23 +1,12 @@
 import java.util.ArrayList;
 import java.util.List;
-import java.util.PriorityQueue;
 import java.util.Scanner;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
-import java.lang.NumberFormatException;
-import java.io.DataOutputStream;
-import java.io.FileOutputStream;
-import java.io.InputStream;
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.FileReader;
 import java.io.BufferedReader;
 import java.io.DataInputStream;
-import java.io.FileInputStream;
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.io.BufferedReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -78,9 +67,16 @@ public class TP1 {
                     try{
                         chamaOrdenacao();
                     }
-                    catch(Exception e){
+                    catch (Exception e) {
                         System.out.println("Erro: " + e.getMessage());
                     }
+                    break;
+                case 7:
+                    imprimirTop10(caminhoBinario);
+                    break;
+                case 8:
+                    imprimirTop10("../dataBase/jogos_ordenado.db");
+                    break;
                 default:
                     System.out.println("Numero invalido!");
             }
@@ -338,15 +334,15 @@ public class TP1 {
             int tam = arq.readInt();
             byte[] ba = new byte[tam];
             arq.readFully(ba);
-            
+
             Jogo atual = new Jogo();
-            
+
             atual.fromByteArray(ba);
 
             Jogo atualizado = solicitaDados(atual);
             byte[] novoBa = atualizado.toByteArray();
 
-            if(novoBa.length <= ba.length){
+            if (novoBa.length <= ba.length) {
                 arq.seek(pointer);
                 arq.writeByte(0); // Byte da lápide: 0 = valido, 1 = excluido
                 arq.writeInt(ba.length);
@@ -367,6 +363,34 @@ public class TP1 {
         }
     }
 
+    private static void imprimirTop10(String caminho) {
+        try {
+            java.io.RandomAccessFile arq = new java.io.RandomAccessFile(caminho, "r");
+            arq.seek(4); 
+
+            int cont = 0;
+            while (arq.getFilePointer() < arq.length() && cont < 10) {
+                byte lapide = arq.readByte(); 
+                int tamanho = arq.readInt();
+                byte[] ba = new byte[tamanho];
+                arq.readFully(ba);
+
+
+                if (lapide == 0) {
+                    Jogo jogo = new Jogo();
+                    jogo.fromByteArray(ba);
+                    System.out.println(jogo.toString() + "\n");
+                    cont++;
+                }
+            }
+            arq.close();
+        } catch (java.io.FileNotFoundException e) {
+            System.out.println("Arquivo não encontrado: " + caminho);
+        } catch (Exception e) {
+            System.out.println("Erro ao ler " + caminho + ": " + e.getMessage());
+        }
+    }
+
 public static void chamaOrdenacao() throws Exception{
     OrdenacaoExterna ordenacao = new OrdenacaoExterna();
     long tempoInicio = System.currentTimeMillis();
@@ -380,7 +404,7 @@ public static class OrdenacaoExterna {
 
     
     public int criaArquivos(int tamanho) throws Exception {
-        RandomAccessFile arquivoOriginal = new RandomAccessFile("dataBase/jogos.db", "r");
+        RandomAccessFile arquivoOriginal = new RandomAccessFile("../dataBase/jogos.db", "r");
         arquivoOriginal.seek(4); 
 
         int numArqTemp = 1;
@@ -410,7 +434,7 @@ public static class OrdenacaoExterna {
                 // ordena pelo ID 
                 bm.sort((j1, j2) -> Integer.compare(j1.game_id, j2.game_id));
 
-                String nomeArquivoTemp = "dataBase/temp" + numArqTemp + ".db";
+                String nomeArquivoTemp = "../dataBase/temp" + numArqTemp + ".db";
                 salvarTemp(bm, nomeArquivoTemp);
                 
                 numArqTemp++;
@@ -430,11 +454,11 @@ public static class OrdenacaoExterna {
 
         // verifica o primeiro jogo de cada arquivo
         for (int i = 0; i < qtdArqTemp; i++) {
-            arquivosTemps[i] = new RandomAccessFile("dataBase/temp" + (i + 1) + ".db", "r");
+            arquivosTemps[i] = new RandomAccessFile("../dataBase/temp" + (i + 1) + ".db", "r");
             jogosAtuais[i] = lerProxJogo(arquivosTemps[i]);
         }
 
-        RandomAccessFile arquivoFinal = new RandomAccessFile("dataBase/jogos_ordenado.db", "rw");
+        RandomAccessFile arquivoFinal = new RandomAccessFile("../dataBase/jogos_ordenado.db", "rw");
         arquivoFinal.writeInt(0); 
         int maiorId = 0;
 
@@ -476,7 +500,7 @@ public static class OrdenacaoExterna {
         // apaga os arquivos temporários
         for (int i = 0; i < qtdArqTemp; i++) {
             arquivosTemps[i].close();
-            new File("dataBase/temp" + (i + 1) + ".db").delete();
+            new File("../dataBase/temp" + (i + 1) + ".db").delete();
         }
 
         System.out.println("Intercalação concluída.");
