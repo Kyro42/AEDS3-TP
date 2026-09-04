@@ -13,8 +13,8 @@ import java.nio.file.Paths;
 import java.io.IOException;
 
 public class TP1 {
-    private static Path caminhoCSV = Paths.get("../dataBase/steam_games.csv");
-    private static String caminhoBinario = "../database/jogos.db";
+    private static Path caminhoCSV = Paths.get("dataBase/steam_games.csv");
+    private static String caminhoBinario = "database/jogos.db";
 
     public static void main(String[] args) {
         Scanner sc = new Scanner(System.in);
@@ -75,7 +75,7 @@ public class TP1 {
                     imprimirTop10(caminhoBinario);
                     break;
                 case 8:
-                    imprimirTop10("../dataBase/jogos_ordenado.db");
+                    imprimirTop10("dataBase/jogos_ordenado.db");
                     break;
                 default:
                     System.out.println("Numero invalido!");
@@ -404,7 +404,7 @@ public static class OrdenacaoExterna {
 
     
     public int criaArquivos(int tamanho) throws Exception {
-        RandomAccessFile arquivoOriginal = new RandomAccessFile("../dataBase/jogos.db", "r");
+        RandomAccessFile arquivoOriginal = new RandomAccessFile("dataBase/jogos.db", "r");
         arquivoOriginal.seek(4); 
 
         int numArqTemp = 1;
@@ -434,7 +434,7 @@ public static class OrdenacaoExterna {
                 // ordena pelo ID 
                 bm.sort((j1, j2) -> Integer.compare(j1.game_id, j2.game_id));
 
-                String nomeArquivoTemp = "../dataBase/temp" + numArqTemp + ".db";
+                String nomeArquivoTemp = "dataBase/temp" + numArqTemp + ".db";
                 salvarTemp(bm, nomeArquivoTemp);
                 
                 numArqTemp++;
@@ -454,11 +454,11 @@ public static class OrdenacaoExterna {
 
         // verifica o primeiro jogo de cada arquivo
         for (int i = 0; i < qtdArqTemp; i++) {
-            arquivosTemps[i] = new RandomAccessFile("../dataBase/temp" + (i + 1) + ".db", "r");
+            arquivosTemps[i] = new RandomAccessFile("dataBase/temp" + (i + 1) + ".db", "r");
             jogosAtuais[i] = lerProxJogo(arquivosTemps[i]);
         }
 
-        RandomAccessFile arquivoFinal = new RandomAccessFile("../dataBase/jogos_ordenado.db", "rw");
+        RandomAccessFile arquivoFinal = new RandomAccessFile("dataBase/jogos_ordenado.db", "rw");
         arquivoFinal.writeInt(0); 
         int maiorId = 0;
 
@@ -500,7 +500,7 @@ public static class OrdenacaoExterna {
         // apaga os arquivos temporários
         for (int i = 0; i < qtdArqTemp; i++) {
             arquivosTemps[i].close();
-            new File("../dataBase/temp" + (i + 1) + ".db").delete();
+            new File("dataBase/temp" + (i + 1) + ".db").delete();
         }
 
         System.out.println("Intercalação concluída.");
