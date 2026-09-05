@@ -21,7 +21,7 @@
 ## Sobre o Projeto
 Este projeto consiste na implementação de um sistema de gerenciamento de banco de dados baseado em arquivos para um catálogo de jogos da Steam. O programa realiza a carga inicial lendo dados de um arquivo estruturado `.csv`, converte essas informações para um arquivo binário (`jogos.db`) e permite a realização de operações de gerenciamento e pesquisa.
 
-## ⚙️ Funcionalidades Implementadas
+## Funcionalidades Implementadas
 - **Carga de Dados:** Processamento do arquivo `steam_games.csv` e escrita estruturada no arquivo binário.
 - **Operações CRUD:**
   - **Create (Criação):** Inserção de novos registros de jogos no final do arquivo binário, garantindo um novo ID sequencial.
