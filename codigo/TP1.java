@@ -536,4 +536,148 @@ public static class OrdenacaoExterna {
     }
 }
 
+
+public static class BMaisNo {
+
+
+    public boolean isFolha;
+    public int numIds;
+    public int[] ids;          // IDs dos jogos
+    public long[] ponteiros;     // Se for nó interno - ponteiro dos nós filhos 
+    public long[] registros;  // Se for folha - posições dos registros no arquivo de dados
+    public long proxFolha;       // Se for lista encadeada das folhas
+    public int ordem;          // Ordem - m 
+
+    // Construtor 
+    public BMaisNo(int ordem, boolean isFolha) {
+        this.ordem = ordem;
+        this.isFolha = isFolha;
+        this.numIds = 0;
+        this.proxFolha = -1; 
+        
+        this.ids = new int[ordem - 1];
+        
+        if (this.isFolha) {
+            this.registros = new long[ordem - 1];
+            this.ponteiros = null;
+        } else {
+            this.ponteiros = new long[ordem];
+            this.registros = null;
+        }
+    }
+
+    // escreve o nó no arquivo 
+    
+    public void salvarDisco(RandomAccessFile arq, long pos) throws IOException {
+        arq.seek(pos);
+        
+        arq.writeBoolean(this.isFolha);
+        arq.writeInt(this.numIds);
+        
+        // Grava o vetor de chaves (sempre grava o limite máximo para manter o tamanho fixo da página)
+        for (int i = 0; i < ordem - 1; i++) {
+            if (i < numIds) {
+                arq.writeInt(ids[i]);
+            } else {
+                arq.writeInt(-1); // Espaço vazio
+            }
+        }
+        
+        // grava os ponteiros específicos garantindo o mesmo tamanho de bytes para folha ou interno
+        if (this.isFolha) {
+            for (int i = 0; i < ordem - 1; i++) {
+                if (i < numIds) {
+                    arq.writeLong(registros[i]);
+                } else {
+                    arq.writeLong(-1);
+                }
+            }
+            arq.writeLong(this.proxFolha);
+        } else {
+            for (int i = 0; i < ordem; i++) {
+                // nós internos têm (numIds + 1) ponteiros ativos
+                if (i <= numIds) {
+                    arq.writeLong(ponteiros[i]);
+                } else {
+                    arq.writeLong(-1);
+                }
+            }
+        }
+    }
+
+    // lê um nó do arquivo inicial
+    public static BMaisNo lerDisco(RandomAccessFile arq, long pos, int ordem) throws IOException {
+        arq.seek(pos);
+        
+        boolean isFolha = arq.readBoolean();
+        BMaisNo no = new BMaisNo(ordem, isFolha);
+        
+        no.numIds = arq.readInt();
+        
+        for (int i = 0; i < ordem - 1; i++) {
+            no.ids[i] = arq.readInt();
+        }
+        
+        if (isFolha) {
+            for (int i = 0; i < ordem - 1; i++) {
+                no.registros[i] = arq.readLong();
+            }
+            no.proxFolha = arq.readLong();
+        } else {
+            for (int i = 0; i < ordem; i++) {
+                no.ponteiros[i] = arq.readLong();
+            }
+        }
+        
+        return no;
+    }
+}
+
+public class ArvoreBMais {
+    private RandomAccessFile arq;
+    private int ordem;
+    private long raiz; 
+
+    public ArvoreBMais(RandomAccessFile arq, int ordem, long raiz) {
+        this.arq = arq;
+        this.ordem = ordem;
+        this.raiz = raiz;
+    }
+
+    // Busca um ID na árvore e retorna a posição do registro
+    
+    public long buscar(int idProcurado) throws IOException {
+        // Se a árvore estiver vazia 
+        if (raiz == -1) {
+            return -1; 
+        }
+
+        long registroAtual = raiz;
+        BMaisNo noAtual = BMaisNo.lerDisco(arq, registroAtual, ordem);
+
+        // while que faz ir até a folha
+        while (!noAtual.isFolha) {
+            int i = 0;
+            
+            // while pra guardar o indice do array de ponteiros pra descer pela arvore
+            while (i < noAtual.numIds && idProcurado >= noAtual.ids[i]) {
+                i++;
+            }
+            
+            registroAtual = noAtual.ponteiros[i];
+            noAtual = BMaisNo.lerDisco(arq, registroAtual, ordem);
+        }
+
+        // ao chegar na folha faz uma busca linear 
+        for (int i = 0; i < noAtual.numIds; i++) {
+            if (noAtual.ids[i] == idProcurado) {
+                return noAtual.registros[i]; 
+            }
+        }
+
+        // se percorreu a folha inteira e não achou o ID, o jogo não existe.
+        return -1; 
+    }
+}
+
 }
