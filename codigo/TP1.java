@@ -535,149 +535,258 @@ public static class OrdenacaoExterna {
         return null;
     }
 }
+public static class ArvoreB {
+        private RandomAccessFile arq;
+        private int ordem;
+        private long raiz; 
 
+        public static class BNo {
+            public boolean isFolha; // define se e folha ou no interno
+            public int numIds; // quantidade atual de chaves no no
+            public int[] ids; // vetor de chaves para busca
+            public long[] registros; // enderecos originais no arquivo de dados
+            public long[] ponteiros; // enderecos das paginas filhas no indice
+            public int ordem;
 
-public static class BMaisNo {
-
-
-    public boolean isFolha;
-    public int numIds;
-    public int[] ids;          // IDs dos jogos
-    public long[] ponteiros;     // Se for nó interno - ponteiro dos nós filhos 
-    public long[] registros;  // Se for folha - posições dos registros no arquivo de dados
-    public long proxFolha;       // Se for lista encadeada das folhas
-    public int ordem;          // Ordem - m 
-
-    // Construtor 
-    public BMaisNo(int ordem, boolean isFolha) {
-        this.ordem = ordem;
-        this.isFolha = isFolha;
-        this.numIds = 0;
-        this.proxFolha = -1; 
-        
-        this.ids = new int[ordem - 1];
-        
-        if (this.isFolha) {
-            this.registros = new long[ordem - 1];
-            this.ponteiros = null;
-        } else {
-            this.ponteiros = new long[ordem];
-            this.registros = null;
-        }
-    }
-
-    // escreve o nó no arquivo 
-    
-    public void salvarDisco(RandomAccessFile arq, long pos) throws IOException {
-        arq.seek(pos);
-        
-        arq.writeBoolean(this.isFolha);
-        arq.writeInt(this.numIds);
-        
-        // Grava o vetor de chaves (sempre grava o limite máximo para manter o tamanho fixo da página)
-        for (int i = 0; i < ordem - 1; i++) {
-            if (i < numIds) {
-                arq.writeInt(ids[i]);
-            } else {
-                arq.writeInt(-1); // Espaço vazio
+            public BNo(int ordem, boolean isFolha) {
+                this.ordem = ordem;
+                this.isFolha = isFolha;
+                this.numIds = 0;
+                
+                this.ids = new int[ordem - 1];
+                this.registros = new long[ordem - 1];
+                this.ponteiros = new long[ordem];
             }
-        }
-        
-        // grava os ponteiros específicos garantindo o mesmo tamanho de bytes para folha ou interno
-        if (this.isFolha) {
-            for (int i = 0; i < ordem - 1; i++) {
-                if (i < numIds) {
-                    arq.writeLong(registros[i]);
-                } else {
-                    arq.writeLong(-1);
+
+            public void salvarDisco(RandomAccessFile arq, long pos) throws IOException {
+                arq.seek(pos); // pula direto para o byte exato da pagina
+                arq.writeBoolean(this.isFolha);
+                arq.writeInt(this.numIds);
+
+                // preenche espacos vazios com -1 garantindo tamanho fixo no disco
+                for (int i = 0; i < ordem - 1; i++) {
+                    if (i < numIds) arq.writeInt(ids[i]);
+                    else arq.writeInt(-1);
+                }
+                
+                for (int i = 0; i < ordem - 1; i++) {
+                    if (i < numIds) arq.writeLong(registros[i]);
+                    else arq.writeLong(-1);
+                }
+
+                for (int i = 0; i < ordem; i++) {
+                    if (i <= numIds && !isFolha) arq.writeLong(ponteiros[i]);
+                    else arq.writeLong(-1);
                 }
             }
-            arq.writeLong(this.proxFolha);
-        } else {
-            for (int i = 0; i < ordem; i++) {
-                // nós internos têm (numIds + 1) ponteiros ativos
-                if (i <= numIds) {
-                    arq.writeLong(ponteiros[i]);
-                } else {
-                    arq.writeLong(-1);
+
+            public static BNo lerDisco(RandomAccessFile arq, long pos, int ordem) throws IOException {
+                arq.seek(pos);
+                boolean isFolha = arq.readBoolean();
+                BNo no = new BNo(ordem, isFolha);
+                
+                no.numIds = arq.readInt();
+                
+                for (int i = 0; i < ordem - 1; i++) {
+                    no.ids[i] = arq.readInt();
                 }
-            }
-        }
-    }
 
-    // lê um nó do arquivo inicial
-    public static BMaisNo lerDisco(RandomAccessFile arq, long pos, int ordem) throws IOException {
-        arq.seek(pos);
-        
-        boolean isFolha = arq.readBoolean();
-        BMaisNo no = new BMaisNo(ordem, isFolha);
-        
-        no.numIds = arq.readInt();
-        
-        for (int i = 0; i < ordem - 1; i++) {
-            no.ids[i] = arq.readInt();
-        }
-        
-        if (isFolha) {
-            for (int i = 0; i < ordem - 1; i++) {
-                no.registros[i] = arq.readLong();
-            }
-            no.proxFolha = arq.readLong();
-        } else {
-            for (int i = 0; i < ordem; i++) {
-                no.ponteiros[i] = arq.readLong();
+                for (int i = 0; i < ordem - 1; i++) {
+                    no.registros[i] = arq.readLong();
+                }
+                for (int i = 0; i < ordem; i++) {
+                    no.ponteiros[i] = arq.readLong();
+                }
+                return no;
             }
         }
         
-        return no;
-    }
-}
-
-public class ArvoreBMais {
-    private RandomAccessFile arq;
-    private int ordem;
-    private long raiz; 
-
-    public ArvoreBMais(RandomAccessFile arq, int ordem, long raiz) {
-        this.arq = arq;
-        this.ordem = ordem;
-        this.raiz = raiz;
-    }
-
-    // Busca um ID na árvore e retorna a posição do registro
-    
-    public long buscar(int idProcurado) throws IOException {
-        // Se a árvore estiver vazia 
-        if (raiz == -1) {
-            return -1; 
+        public ArvoreB(RandomAccessFile arq, int ordem, long raiz) {
+            this.arq = arq;
+            this.ordem = ordem;
+            this.raiz = raiz;
         }
 
-        long registroAtual = raiz;
-        BMaisNo noAtual = BMaisNo.lerDisco(arq, registroAtual, ordem);
+        public long getraiz() {
+            return this.raiz;
+        }
 
-        // while que faz ir até a folha
-        while (!noAtual.isFolha) {
+        // classe mensageira para transportar a chave promovida no split
+        private class Subir {
+            int id;
+            long registro;
+            long filhoDireito;
+
+            public Subir(int id, long registro, long filhoDireito) {
+                this.id = id;
+                this.registro = registro;
+                this.filhoDireito = filhoDireito;
+            }
+        }
+
+        public long buscar(int idProcurado) throws IOException {
+            if (raiz == -1) return -1; // arvore vazia
+
+            long registroAtual = raiz;
+
+            while (registroAtual != -1) {
+                BNo no = BNo.lerDisco(arq, registroAtual, ordem);
+                int i = 0;
+                
+                // acha a posicao correta do ponteiro de descida
+                while (i < no.numIds && idProcurado > no.ids[i]) {
+                    i++;
+                }
+
+                if (i < no.numIds && idProcurado == no.ids[i]) {
+                    return no.registros[i]; // achou o jogo
+                }
+
+                if (no.isFolha) {
+                    return -1; // bateu no fundo da arvore e o jogo nao existe
+                }
+
+                registroAtual = no.ponteiros[i];
+            }
+            return -1;
+        }
+
+        public void inserir(int id, long registro) throws IOException {
+            if (raiz == -1) {
+                // cria a primeira raiz se o arquivo estiver zerado
+                BNo novaRaiz = new BNo(ordem, true);
+                novaRaiz.ids[0] = id;
+                novaRaiz.registros[0] = registro;
+                novaRaiz.numIds = 1;
+                
+                this.raiz = arq.length();
+                if (this.raiz == 0) this.raiz = 8; // preserva o cabecalho de 8 bytes
+                
+                novaRaiz.salvarDisco(arq, this.raiz);
+                return;
+            }
+
+            Subir sobe = inserirRecursivo(raiz, id, registro);
+
+            if (sobe != null) {
+                // cria um novo andar no topo se a raiz antiga estourou
+                BNo novaRaiz = new BNo(ordem, false); 
+                novaRaiz.ids[0] = sobe.id;
+                novaRaiz.registros[0] = sobe.registro;
+                novaRaiz.ponteiros[0] = this.raiz;
+                novaRaiz.ponteiros[1] = sobe.filhoDireito;
+                novaRaiz.numIds = 1;
+                
+                this.raiz = arq.length();
+                novaRaiz.salvarDisco(arq, this.raiz);
+            }
+        }
+
+        private Subir inserirRecursivo(long registroAtual, int id, long registro) throws IOException {
+            BNo no = BNo.lerDisco(arq, registroAtual, ordem);
+            
             int i = 0;
-            
-            // while pra guardar o indice do array de ponteiros pra descer pela arvore
-            while (i < noAtual.numIds && idProcurado >= noAtual.ids[i]) {
-                i++;
+            while (i < no.numIds && id > no.ids[i]) i++;
+
+            if (i < no.numIds && id == no.ids[i]) return null; // ignora ids duplicados
+
+            if (no.isFolha) {
+                if (no.numIds < ordem - 1) {
+                    // insere o numero abrindo buraco no vetor pois tem espaco
+                    inserirVetor(no, i, id, registro, -1);
+                    no.salvarDisco(arq, registroAtual);
+                    return null;
+                } else {
+                    // estouro na folha exige divisao
+                    return dividirNo(no, registroAtual, id, registro, -1);
+                }
+            } else {
+                Subir sobe = inserirRecursivo(no.ponteiros[i], id, registro);
+                
+                if (sobe == null) return null; // tudo resolvido la embaixo
+                
+                int pos = 0;
+                while (pos < no.numIds && sobe.id > no.ids[pos]) pos++;
+
+                if (no.numIds < ordem - 1) {
+                    // absorve a chave promovida no no interno
+                    inserirVetor(no, pos, sobe.id, sobe.registro, sobe.filhoDireito);
+                    no.salvarDisco(arq, registroAtual);
+                    return null;
+                } else {
+                    // estouro no no interno propaga nova chave pra cima
+                    return dividirNo(no, registroAtual, sobe.id, sobe.registro, sobe.filhoDireito);
+                }
             }
-            
-            registroAtual = noAtual.ponteiros[i];
-            noAtual = BMaisNo.lerDisco(arq, registroAtual, ordem);
         }
 
-        // ao chegar na folha faz uma busca linear 
-        for (int i = 0; i < noAtual.numIds; i++) {
-            if (noAtual.ids[i] == idProcurado) {
-                return noAtual.registros[i]; 
+        private void inserirVetor(BNo no, int pos, int id, long reg, long filhoDireito) {
+            // empurra os maiores pra direita garantindo a ordenacao crescente
+            for (int j = no.numIds; j > pos; j--) {
+                no.ids[j] = no.ids[j - 1];
+                no.registros[j] = no.registros[j - 1];
+                no.ponteiros[j + 1] = no.ponteiros[j];
             }
+            no.ids[pos] = id;
+            no.registros[pos] = reg;
+            no.ponteiros[pos + 1] = filhoDireito;
+            no.numIds++;
         }
 
-        // se percorreu a folha inteira e não achou o ID, o jogo não existe.
-        return -1; 
+        private Subir dividirNo(BNo no, long registroAtual, int novoId, long novoReg, long novoFilhoDir) throws IOException {
+            // vetores temporarios estendidos para misturar tudo antes de cortar
+            int[] tempIds = new int[ordem];
+            long[] tempRegs = new long[ordem];
+            long[] tempPonts = new long[ordem + 1];
+
+            int pos = 0;
+            while (pos < no.numIds && no.ids[pos] < novoId) pos++;
+
+            for (int j = 0, k = 0; j < ordem; j++) {
+                if (j == pos) {
+                    tempIds[j] = novoId;
+                    tempRegs[j] = novoReg;
+                } else {
+                    tempIds[j] = no.ids[k];
+                    tempRegs[j] = no.registros[k];
+                    k++;
+                }
+            }
+            
+            for (int j = 0, k = 0; j <= ordem; j++) {
+                if (j == pos + 1) tempPonts[j] = novoFilhoDir;
+                else { tempPonts[j] = no.ponteiros[k]; k++; }
+            }
+
+            // identifica exatamente quem fica na divisao para ser promovido
+            int meio = ordem / 2;
+            Subir sobe = new Subir(tempIds[meio], tempRegs[meio], -1); 
+
+            // mantem a metade inferior no no da esquerda
+            no.numIds = meio;
+            for (int j = 0; j < meio; j++) {
+                no.ids[j] = tempIds[j];
+                no.registros[j] = tempRegs[j];
+                no.ponteiros[j] = tempPonts[j];
+            }
+            no.ponteiros[meio] = tempPonts[meio];
+
+            BNo novoNo = new BNo(ordem, no.isFolha);
+            novoNo.numIds = ordem - meio - 1; 
+            for (int j = 0; j < novoNo.numIds; j++) {
+                novoNo.ids[j] = tempIds[meio + 1 + j];
+                novoNo.registros[j] = tempRegs[meio + 1 + j];
+                novoNo.ponteiros[j] = tempPonts[meio + 1 + j];
+            }
+            novoNo.ponteiros[novoNo.numIds] = tempPonts[ordem];
+
+            long registroNovoNo = arq.length();
+            no.salvarDisco(arq, registroAtual);
+            novoNo.salvarDisco(arq, registroNovoNo);
+
+            sobe.filhoDireito = registroNovoNo;
+            return sobe;
+        }
     }
-}
 
 }
