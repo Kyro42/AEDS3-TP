@@ -13,8 +13,8 @@ import java.nio.file.Paths;
 import java.io.IOException;
 
 public class TP1 {
-    private static Path caminhoCSV = Paths.get("../dataBase/steam_games.csv");
-    private static String caminhoBinario = "../database/jogos.db";
+    private static Path caminhoCSV = Paths.get("dataBase/steam_games.csv");
+    private static String caminhoBinario = "database/jogos.db";
 
     public static void main(String[] args) {
         Scanner sc = new Scanner(System.in);
