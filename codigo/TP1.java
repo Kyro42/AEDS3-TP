@@ -13,11 +13,31 @@ import java.nio.file.Paths;
 import java.io.IOException;
 
 public class TP1 {
-    private static Path caminhoCSV = Paths.get("dataBase/steam_games.csv");
+   private static Path caminhoCSV = Paths.get("dataBase/steam_games.csv");
     private static String caminhoBinario = "database/jogos.db";
+    
+    // variaveis globais da arvore para o menu todo enxergar
+    public static ArvoreB arvore;
+    public static long raiz = -1;
+    public static RandomAccessFile arqIndice;
 
     public static void main(String[] args) {
         Scanner sc = new Scanner(System.in);
+        
+        // inicializa a arvore b com ordem 1000 
+        try {
+            arqIndice = new RandomAccessFile("database/indice.bin", "rw");
+            if (arqIndice.length() == 0) {
+                arqIndice.writeLong(-1);
+            } else {
+                arqIndice.seek(0);
+                raiz = arqIndice.readLong();
+            }
+            arvore = new ArvoreB(arqIndice, 510, raiz); 
+        } catch (IOException e) {
+            System.out.println("Erro ao criar indice: " + e.getMessage());
+        }
+
         criaMenu();
         int opt = sc.nextInt();
         while (opt != 0) {
@@ -31,7 +51,7 @@ public class TP1 {
                     insereRegistro();
                     break;
                 case 3:
-                    System.out.print("\nDigite o ID que deseja buscar: ");
+                    System.out.print("\nDigite o ID que deseja buscar (Busca Sequencial): ");
                     id = sc.nextInt();
                     System.out.println();
                     retorno = buscador(id);
@@ -47,7 +67,7 @@ public class TP1 {
                     System.out.println();
                     retorno = buscador(id);
                     if(retorno == -1){
-                        System.out.println("Registro não encontrado :(");
+                        System.out.println("Registro não encontrado");
                     } else{
                         atualizaRegistro(retorno);
                     }
@@ -58,7 +78,7 @@ public class TP1 {
                     System.out.println();
                     retorno = buscador(id);
                     if(retorno == -1){
-                        System.out.println("Registro não encontrado! :(");
+                        System.out.println("Registro não encontrado!");
                     } else{
                         removerRegistro(retorno);
                     }
@@ -77,38 +97,86 @@ public class TP1 {
                 case 8:
                     imprimirTop10("dataBase/jogos_ordenado.db");
                     break;
+                case 9:
+                    System.out.print("\nDigite o ID que deseja buscar na Árvore B: ");
+                    id = sc.nextInt();
+                    System.out.println();
+                    try {
+                        retorno = arvore.buscar(id);
+                        if(retorno == -1){
+                            System.out.println("Registro não encontrado no índice da Árvore B!");
+                        } else{
+                            System.out.println("Encontrado no índice!");
+                            lerRegistro(retorno); 
+                        }
+                    } catch (Exception e) {
+                        System.out.println("Erro ao buscar no índice: " + e.getMessage());
+                    }
+                    break;
                 default:
                     System.out.println("Numero invalido!");
             }
+            
+            // salva a nova raiz no cabecalho se ela tiver mudado de lugar
+            try {
+                if (arvore != null && arvore.getraiz() != raiz) {
+                    raiz = arvore.getraiz();
+                    arqIndice.seek(0);
+                    arqIndice.writeLong(raiz);
+                }
+            } catch (Exception e) {}
+
             criaMenu();
             opt = sc.nextInt();
         }
+        
+        try {
+            if (arqIndice != null) arqIndice.close();
+        } catch (Exception e) {}
+        
         sc.close();
     }
 
     public static void criaMenu() {
         String titulo = "\n-----------Steam Games DB----------";
         String barra = "-----------------------------------\n";
-        String opcoes = String.format("\n%s\n%s\n%s\n%s\n%s\n%s\n%s", "[1] Carregar base de dados", "[2] Inserir registro" , "[3] Ler registro",
-                "[4] Atualizar registro", "[5] Deletar registro","[6] Ordenar registros" , "[0] Sair");
+        String opcoes = String.format("\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s", 
+                "[1] Carregar base de dados", 
+                "[2] Inserir registro", 
+                "[3] Ler registro (Sequencial)",
+                "[4] Atualizar registro", 
+                "[5] Deletar registro",
+                "[6] Ordenar registros",
+                "[7] Top 10 (Base)",
+                "[8] Top 10 (Ordenado)",
+                "[9] Buscar na Árvore B (Indexado)");
 
         System.out.println(titulo);
-        System.out.println("Selecione:");
+        System.out.println("Selecione a opcao (ou 0 para Sair):");
         System.out.println(opcoes);
         System.out.println(barra);
     }
-
     public static void leitorCSV() {
-
         int ultimoId = 0;
+        int contProgresso = 0; 
 
         try (BufferedReader leitor = Files.newBufferedReader(caminhoCSV)) {
             RandomAccessFile arq = new RandomAccessFile(caminhoBinario, "rw");
+            
+            arq.setLength(0); 
+            arqIndice.setLength(0);
+            arqIndice.writeLong(-1);
+            raiz = -1; 
+            arvore = new ArvoreB(arqIndice, 50, raiz); 
+            
             arq.writeInt(0);
             String linha;
             leitor.readLine();
+            
+            System.out.println("Iniciando carregamento e indexação");
+            
             while ((linha = leitor.readLine()) != null) {
-                String[] valores = linha.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)"); //valores[4] = generos
+                String[] valores = linha.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)"); 
                 if (valores.length == 6) {
 
                     int id = Integer.parseInt(valores[0]);
@@ -118,13 +186,10 @@ public class TP1 {
                     if (!valores[3].trim().isEmpty()) {
                         try {
                             preco = Float.parseFloat(valores[3]);
-                        } catch (Exception e) {
-
-                        }
+                        } catch (Exception e) {}
                     }
 
-                    String generosRaw = valores[4]; // os generos do jogo estão assim: "[""genero1"",""genero2""]". Quero deixa-los assim: genero1, genero2.
-
+                    String generosRaw = valores[4]; 
                     String generos = generosRaw.replace("[", "").replace("]", "").replace("\"", "");
                     valores[4] = generos;
 
@@ -139,9 +204,22 @@ public class TP1 {
 
                     try {
                         ba = temp.toByteArray();
-                        arq.writeByte(0); // Byte da lápide: 0 = valido, 1 = excluido
+                        
+                        // pega a coordenada antes de gravar a lapide
+                        long pos = arq.getFilePointer();
+                        
+                        arq.writeByte(0); 
                         arq.writeInt(ba.length);
                         arq.write(ba);
+                        
+                        // insere na arvore
+                        arvore.inserir(id, pos);
+                        
+                        contProgresso++;
+                        if (contProgresso % 1000 == 0) {
+                            System.out.println(contProgresso + " jogos processados...");
+                        }
+                        
                     } catch (Exception e) {
                         System.out.println(e);
                     }
@@ -149,13 +227,14 @@ public class TP1 {
             }
             arq.seek(0);
             arq.writeInt(ultimoId);
-            System.out.println("\nBase de dados carregada com sucesso! Ultimo ID: " + ultimoId);
+            System.out.println("\n Base de dados carregada e Árvore B criada. Ultimo ID: " + ultimoId);
             arq.close();
         } catch (IOException e) {
             System.out.println(e);
         }
     }
 
+    
     public static void insereRegistro() {
         RandomAccessFile arq;
         try {
@@ -168,9 +247,17 @@ public class TP1 {
             jogo = solicitaDados(jogo);
             byte[] ba = jogo.toByteArray();
             int tam = ba.length;
-            arq.writeByte(0); //lápide. 0 = registro valido, 1 = registro excluido
+            
+            // anota o byte exato onde o jogo novo vai ficar
+            long pos = arq.getFilePointer();
+            
+            arq.writeByte(0); 
             arq.writeInt(tam);
             arq.write(ba);
+            
+            // indexa na arvore b
+            arvore.inserir(ultimoId, pos);
+            
             arq.seek(0);
             arq.writeInt(ultimoId);
             System.out.println("Jogo inserido com sucesso! id: " + ultimoId);
@@ -179,7 +266,6 @@ public class TP1 {
             System.out.println(e.getMessage());
         }
     }
-
     public static long buscador(int id) {
         RandomAccessFile arq;
         int tam;
