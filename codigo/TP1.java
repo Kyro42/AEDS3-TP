@@ -370,18 +370,24 @@ public class TP1 {
             arq.seek(0);
             int ultimoId = arq.readInt();
             arq.seek(pointer);
-            arq.writeByte(1);
+            arq.writeByte(1); // Lápide de exclusão ativada
             int tam = arq.readInt();
             byte[] ba = new byte[tam];
             arq.readFully(ba);
+            
             Jogo jogo = new Jogo();
             jogo.fromByteArray(ba);
-            if(jogo.game_id == ultimoId){
+            
+            if(jogo.game_id == ultimoId){ 
                 ultimoId = achaPenultimoId();
                 arq.seek(0);
                 arq.writeInt(ultimoId);
             }
-            System.out.println("Jogo deletado com sucesso! :D");
+            
+            // remove ponteiro da arvore
+            arvore.atualizar(jogo.game_id, -1);
+            
+            System.out.println("Jogo deletado!");
             System.out.println("Ultimo ID: " + ultimoId);
             arq.close();
         } catch (Exception e) {
@@ -407,7 +413,7 @@ public class TP1 {
         return res;
     }
 
-    public static void atualizaRegistro(long pointer) {
+  public static void atualizaRegistro(long pointer) {
         if (pointer < 0) {
             System.out.println("Registro não encontrado para atualização.");
             return;
@@ -416,13 +422,11 @@ public class TP1 {
         try {
             arq = new RandomAccessFile(caminhoBinario, "rw");
             arq.seek(pointer);
-            byte lapide = arq.readByte();
             int tam = arq.readInt();
             byte[] ba = new byte[tam];
             arq.readFully(ba);
 
             Jogo atual = new Jogo();
-
             atual.fromByteArray(ba);
 
             Jogo atualizado = solicitaDados(atual);
@@ -435,14 +439,20 @@ public class TP1 {
                 arq.write(novoBa);
             } else {
                 arq.seek(pointer);
-                arq.writeByte(1);
-                arq.seek(arq.length());
-                arq.writeByte(0); // Byte da lápide: 0 = valido, 1 = excluido
+                arq.writeByte(1); // Exclui o antigo
+                
+                long novaPosicao = arq.length(); // Anota o byte do final do arquivo
+                
+                arq.seek(novaPosicao);
+                arq.writeByte(0); 
                 arq.writeInt(novoBa.length);
                 arq.write(novoBa);
+                
+                // muda o ponteiro da arvore
+                arvore.atualizar(atual.game_id, novaPosicao); 
             }
 
-            System.out.println("\nJogo atualizado com sucesso! :D\n");
+            System.out.println("\nJogo atualizado com sucesso!\n");
             arq.close();
         } catch (Exception e) {
             System.out.println("Erro durante a atualização: " + e.getMessage());
@@ -872,6 +882,34 @@ public static class ArvoreB {
 
             sobe.filhoDireito = registroNovoNo;
             return sobe;
+        }
+        public boolean atualizar(int idProcurado, long novoRegistro) throws IOException {
+            if (raiz == -1) return false;
+
+            long registroAtual = raiz;
+
+            while (registroAtual != -1) {
+                BNo no = BNo.lerDisco(arq, registroAtual, ordem);
+                int i = 0;
+                
+                while (i < no.numIds && idProcurado > no.ids[i]) {
+                    i++;
+                }
+
+                if (i < no.numIds && idProcurado == no.ids[i]) {
+                    // achou o ID, agora faz a troca de ponteiros
+                    no.registros[i] = novoRegistro; 
+                    no.salvarDisco(arq, registroAtual); 
+                    return true;
+                }
+
+                if (no.isFolha) {
+                    return false; // não achou
+                }
+
+                registroAtual = no.ponteiros[i];
+            }
+            return false;
         }
     }
 
