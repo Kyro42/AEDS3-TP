@@ -16,7 +16,7 @@
 
 > **[Assista ao vídeo de demonstração e explicação do código no YouTube - TP1](https://youtu.be/BwO3Ldon7v0)**
 
-> **[Assista ao vídeo de demonstração e explicação do código no YouTube - TP2](https://youtu.be/BwO3Ldon7v0)**
+> **[Assista ao vídeo de demonstração e explicação do código no YouTube - TP2](https://youtu.be/XZ43-Km3MD0)**
 
 ---
 
