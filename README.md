@@ -15,6 +15,7 @@
 ## Apresentação do Projeto
 
 > **[Assista ao vídeo de demonstração e explicação do código no YouTube - TP1](https://youtu.be/BwO3Ldon7v0)**
+
 > **[Assista ao vídeo de demonstração e explicação do código no YouTube - TP2](https://youtu.be/BwO3Ldon7v0)**
 
 ---
@@ -37,6 +38,12 @@ Tamanho Fixo Constante: Para permitir a navegação algorítmica pelo disco via 
 Para resolver o gargalo de I/O (leitura/escrita no disco rígido) inerente à busca sequencial, implementamos uma Árvore B persistida fisicamente em disco.
 
 A Escolha da Ordem (Ordem 50): O desempenho do RandomAccessFile é fortemente impactado pela arquitetura do Sistema Operacional, que lê discos em blocos (clusters) de 4KB. Ao definir a Ordem 50, cada nó da nossa Árvore B possui um tamanho serializado fixo de aproximadamente 1 KB. Isso garante que a leitura de uma página da árvore caiba perfeitamente dentro de um bloco nativo do disco, evitando fragmentação e travamentos (congelamentos) de I/O durante divisões (splits).
+
+### Índice Secundário: Lista Invertida (Pesquisa Textual)
+Para garantir uma busca full-text (pesquisa por fragmentos do título do jogo, simulando mecanismos de busca comuns), foi implementada uma estrutura de *Lista Invertida Booleana*, distribuída arquiteturalmente em dois arquivos para evitar fragmentação:
+* *Arquivo de Dicionário:* Responsável por guardar os termos isolados (ex: zelda, legend, mario) extraídos dos títulos lidos em lower-case e sanitizados.
+* *Arquivo de Blocos (Cestos):* Armazena sequências puras de IDs (4 bytes) vinculadas às ocorrências daqueles termos. Foram adotados blocos encadeados, limitados a guardar 500 registros cada. O dimensionamento foi pensado para gerar "pacotes" (blocos) em torno de *4 Kilobytes*, minimizando desperdício computacional ao espelhar o tamanho de página ideal lido nativamente pelos Sistemas Operacionais modernos.
+* *Warm-up Cache (RAM):* O maior impacto no tempo de carregamento da base ocorria na verificação se uma determinada palavra já constava no Dicionário em disco. Para resolver o problema, o algoritmo executa um cache imediato via HashMap na inicialização do sistema, espelhando todo o Dicionário em memória. A supressão das repetidas varreduras físicas de busca fez o tempo de indexação global da base despencar drasticamente.
 
 ##  Algoritmo de Ordenação
 O sistema implementa a ordenação dos registros armazenados no arquivo binário. Como a manipulação direta em disco é custosa e lenta em comparação com a memória principal, a estratégia de ordenação foi dividida em etapas (Ordenação Externa):
