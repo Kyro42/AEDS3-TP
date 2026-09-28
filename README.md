@@ -15,6 +15,7 @@
 ## Apresentação do Projeto
 
 > **[Assista ao vídeo de demonstração e explicação do código no YouTube - TP1](https://youtu.be/BwO3Ldon7v0)**
+> **[Assista ao vídeo de demonstração e explicação do código no YouTube - TP2](https://youtu.be/BwO3Ldon7v0)**
 
 ---
 
@@ -28,6 +29,14 @@ Este projeto consiste na implementação de um sistema de gerenciamento de banco
   - **Read (Leitura):** Busca de um jogo específico através do seu ID, lendo os bytes do arquivo de forma sequencial.
   - **Update (Atualização):** Alteração dos dados de um jogo existente. Caso o novo registro seja maior que o antigo, ele é realocado para o final do arquivo.
   - **Delete (Remoção):** Remoção lógica de um registro utilizando uma marcação (flag/lápide), evitando a necessidade de reescrever todo o arquivo.
+
+
+Tamanho Fixo Constante: Para permitir a navegação algorítmica pelo disco via seek(), o tamanho dos nós (arrays de IDs, registros e ponteiros) é estritamente fixo. Espaços vazios dentro dos nós são preenchidos com -1.
+
+## Estrutura de Índice: Árvore B 
+Para resolver o gargalo de I/O (leitura/escrita no disco rígido) inerente à busca sequencial, implementamos uma Árvore B persistida fisicamente em disco.
+
+A Escolha da Ordem (Ordem 50): O desempenho do RandomAccessFile é fortemente impactado pela arquitetura do Sistema Operacional, que lê discos em blocos (clusters) de 4KB. Ao definir a Ordem 50, cada nó da nossa Árvore B possui um tamanho serializado fixo de aproximadamente 1 KB. Isso garante que a leitura de uma página da árvore caiba perfeitamente dentro de um bloco nativo do disco, evitando fragmentação e travamentos (congelamentos) de I/O durante divisões (splits).
 
 ##  Algoritmo de Ordenação
 O sistema implementa a ordenação dos registros armazenados no arquivo binário. Como a manipulação direta em disco é custosa e lenta em comparação com a memória principal, a estratégia de ordenação foi dividida em etapas (Ordenação Externa):
