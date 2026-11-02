@@ -24,7 +24,6 @@ public class TP1 {
     public static void main(String[] args) {
         Scanner sc = new Scanner(System.in);
         
-        // inicializa a arvore b com ordem 1000 
         try {
             arqIndice = new RandomAccessFile("database/indice.bin", "rw");
             if (arqIndice.length() == 0) {
@@ -33,7 +32,7 @@ public class TP1 {
                 arqIndice.seek(0);
                 raiz = arqIndice.readLong();
             }
-            arvore = new ArvoreB(arqIndice, 510, raiz); 
+            arvore = new ArvoreB(arqIndice, 50, raiz); 
         } catch (IOException e) {
             System.out.println("Erro ao criar indice: " + e.getMessage());
         }
@@ -56,7 +55,7 @@ public class TP1 {
                     System.out.println();
                     retorno = buscador(id);
                     if(retorno == -1){
-                        System.out.println("Registro não encontrado :(");
+                        System.out.println("Registro não encontrado");
                     } else{
                         lerRegistro(retorno);
                     }
@@ -92,12 +91,6 @@ public class TP1 {
                     }
                     break;
                 case 7:
-                    imprimirTop10(caminhoBinario);
-                    break;
-                case 8:
-                    imprimirTop10("dataBase/jogos_ordenado.db");
-                    break;
-                case 9:
                     System.out.print("\nDigite o ID que deseja buscar na Árvore B: ");
                     id = sc.nextInt();
                     System.out.println();
@@ -140,16 +133,14 @@ public class TP1 {
     public static void criaMenu() {
         String titulo = "\n-----------Steam Games DB----------";
         String barra = "-----------------------------------\n";
-        String opcoes = String.format("\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s", 
+        String opcoes = String.format("\n%s\n%s\n%s\n%s\n%s\n%s\n%s", 
                 "[1] Carregar base de dados", 
                 "[2] Inserir registro", 
                 "[3] Ler registro (Sequencial)",
                 "[4] Atualizar registro", 
                 "[5] Deletar registro",
                 "[6] Ordenar registros",
-                "[7] Top 10 (Base)",
-                "[8] Top 10 (Ordenado)",
-                "[9] Buscar na Árvore B (Indexado)");
+                "[7] Buscar na Árvore B (Indexado)");
 
         System.out.println(titulo);
         System.out.println("Selecione a opcao (ou 0 para Sair):");
