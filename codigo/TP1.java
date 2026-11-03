@@ -15,32 +15,30 @@ import java.io.DataOutputStream;
 import java.util.HashMap;
 
 public class TP1 {
-    private static Path caminhoCSV = Paths.get("dataBase/steam_games.csv");
-    private static String caminhoBinario = "database/jogos.db";
+    private static final Scanner sc = new Scanner(System.in);
+   private static final String DIR_DADOS = "dataBase/";
+
+private static Path caminhoCSV = Paths.get(DIR_DADOS + "steam_games.csv");
+private static String caminhoBinario = DIR_DADOS + "jogos.db";
+private static final String caminhoBlocos = DIR_DADOS + "blocos.listainv.db";
+private static final String caminhoDicionario = DIR_DADOS + "dicionario.listainv.db";
 
     // variaveis globais da arvore para o menu todo enxergar
     public static ArvoreB arvore;
-    public static long raiz = -1;
     public static RandomAccessFile arqIndice;
     public static ListaInvertida listaInvertida;
-
+    
     public static void main(String[] args) {
-        Scanner sc = new Scanner(System.in);
 
 
         // inicializa a arvore b com ordem 1000 
         try {
-            arqIndice = new RandomAccessFile("database/indice.bin", "rw");
-            if (arqIndice.length() == 0) {
-                arqIndice.writeLong(-1);
-            } else {
-                arqIndice.seek(0);
-                raiz = arqIndice.readLong();
-            }
-            arvore = new ArvoreB(arqIndice, 510, raiz);
-        } catch (IOException e) {
-            System.out.println("Erro ao criar indice: " + e.getMessage());
-        }
+    Files.createDirectories(Paths.get(DIR_DADOS));
+    arqIndice = new RandomAccessFile(DIR_DADOS + "indice.bin", "rw");
+    arvore = new ArvoreB(arqIndice, 510); // o construtor lê ou cria o cabeçalho sozinho
+} catch (IOException e) {
+    System.out.println("Erro ao criar indice: " + e.getMessage());
+}
 
         //inicializa a lista invertida
         try {
@@ -50,7 +48,7 @@ public class TP1 {
         }
 
         criaMenu();
-        int opt = sc.nextInt();
+        int opt = Integer.parseInt(sc.nextLine().trim());
         while (opt != 0) {
             int id;
             long retorno;
@@ -63,7 +61,7 @@ public class TP1 {
                     break;
                 case 3:
                     System.out.print("\nDigite o ID que deseja buscar (Busca Sequencial): ");
-                    id = sc.nextInt();
+                    id = Integer.parseInt(sc.nextLine().trim());
                     System.out.println();
                     retorno = buscador(id);
 
@@ -75,7 +73,7 @@ public class TP1 {
                     break;
                 case 4:
                     System.out.print("\nDigite o ID que deseja atualizar: ");
-                    id = sc.nextInt();
+                    id = Integer.parseInt(sc.nextLine().trim());
                     System.out.println();
                     retorno = buscador(id);
                     if (retorno == -1) {
@@ -86,7 +84,7 @@ public class TP1 {
                     break;
                 case 5:
                     System.out.print("\nDigite o ID que deseja deletar: ");
-                    id = sc.nextInt();
+                    id = Integer.parseInt(sc.nextLine().trim());
                     System.out.println();
                     retorno = buscador(id);
                     if (retorno == -1) {
@@ -104,7 +102,7 @@ public class TP1 {
                     break;
                 case 7:
                     System.out.print("\nDigite o ID que deseja buscar na Árvore B: ");
-                    id = sc.nextInt();
+                    id = Integer.parseInt(sc.nextLine().trim());
                     System.out.println();
                     try {
                         retorno = arvore.buscar(id);
@@ -125,19 +123,9 @@ public class TP1 {
                     System.out.println("Numero invalido!");
             }
 
-            // salva a nova raiz no cabecalho se ela tiver mudado de lugar
-            try {
-                if (arvore != null && arvore.getraiz() != raiz) {
-                    raiz = arvore.getraiz();
-                    arqIndice.seek(0);
-                    arqIndice.writeLong(raiz);
-                }
-            } catch (Exception e) {
-                System.out.println(e);
-            }
-
+    
             criaMenu();
-            opt = sc.nextInt();
+            opt = Integer.parseInt(sc.nextLine().trim());
         }
 
         try {
@@ -145,7 +133,6 @@ public class TP1 {
                 arqIndice.close();
         } catch (Exception e) {
         }
-
         sc.close();
     }
 
@@ -172,20 +159,22 @@ public class TP1 {
         int ultimoId = 0;
         int contProgresso = 0;
 
-        try (BufferedReader leitor = Files.newBufferedReader(caminhoCSV)) {
+            try (BufferedReader leitor = Files.newBufferedReader(caminhoCSV)) {
             RandomAccessFile arq = new RandomAccessFile(caminhoBinario, "rw");
 
-            arq.setLength(0);
+            arq.setLength(0);     
+            try {
+                listaInvertida.limpar();
+            } catch (Exception e) {
+                System.out.println("Aviso ao limpar lista: " + e.getMessage());
+            }
+            
             arqIndice.setLength(0);
-            arqIndice.writeLong(-1);
-            raiz = -1;
-            arvore = new ArvoreB(arqIndice, 200, raiz);
-
-            arq.writeInt(0);
+            arvore = new ArvoreB(arqIndice, 510); 
+            
+            arq.writeInt(0); 
             String linha;
-            leitor.readLine();
-
-            System.out.println("Iniciando carregamento e indexação");
+            leitor.readLine(); 
 
             while ((linha = leitor.readLine()) != null) {
                 String[] valores = linha.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)");
@@ -287,7 +276,7 @@ public class TP1 {
                 try {
                     listaInvertida.create(palavra, new ElementoLista(ultimoId));
                 } catch (Exception e) {
-                    System.out.println(e);
+                    e.printStackTrace();
                 }
             }
 
@@ -296,7 +285,7 @@ public class TP1 {
             System.out.println("Jogo inserido com sucesso! id: " + ultimoId);
             arq.close();
         } catch (Exception e) {
-            System.out.println(e.getMessage());
+            e.printStackTrace();
         }
     }
 
@@ -402,7 +391,7 @@ public class TP1 {
         try {
             arq = new RandomAccessFile(caminhoBinario, "rw");
             arq.seek(0);
-            int ultimoId = arq.readInt();
+            
             arq.seek(pointer);
             arq.writeByte(1); // Lápide de exclusão ativada
             int tam = arq.readInt();
@@ -411,12 +400,6 @@ public class TP1 {
 
             Jogo jogo = new Jogo();
             jogo.fromByteArray(ba);
-
-            if (jogo.game_id == ultimoId) {
-                ultimoId = achaPenultimoId();
-                arq.seek(0);
-                arq.writeInt(ultimoId);
-            }
 
             // remove ponteiro da arvore
             arvore.atualizar(jogo.game_id, -1);
@@ -432,7 +415,6 @@ public class TP1 {
             }
 
             System.out.println("Jogo deletado!");
-            System.out.println("Ultimo ID: " + ultimoId);
             arq.close();
         } catch (Exception e) {
             System.out.println("Erro durante a remoção: " + e.getMessage());
@@ -440,21 +422,18 @@ public class TP1 {
     }
 
     public static Jogo solicitaDados(Jogo antigo) {
-        Scanner sc = new Scanner(System.in);
         System.out.println("\nPor favor, digite os dados para o jogo!");
         System.out.print("\nNome: ");
-        String nome = sc.nextLine();
+        String nome = sc.nextLine().trim();
         System.out.print("\nData de lançamento (yyyy-mm-dd): ");
-        String lancamento = sc.nextLine();
+        String lancamento = sc.nextLine().trim();
         System.out.print("\nPreço (0,0): ");
-        float preco = sc.nextFloat();
+        float preco = Float.parseFloat(sc.nextLine().trim().replace(',', '.'));
         System.out.print("\nGeneros (Ex: \"Casual, indie\"): ");
-        sc.nextLine();
-        String generos = sc.nextLine();
+        String generos = sc.nextLine().trim();
         System.out.print("\nDescrição: ");
-        String descricao = sc.nextLine();
+        String descricao = sc.nextLine().trim();
         Jogo res = new Jogo(antigo.game_id, nome, lancamento, preco, generos, descricao);
-        sc.close();
         return res;
     }
 
@@ -467,6 +446,8 @@ public class TP1 {
         try {
             arq = new RandomAccessFile(caminhoBinario, "rw");
             arq.seek(pointer);
+            arq.skipBytes(1); 
+            
             int tam = arq.readInt();
             byte[] ba = new byte[tam];
             arq.readFully(ba);
@@ -536,16 +517,14 @@ public class TP1 {
     }
 
     public static void buscarListaInv() {
-        Scanner sc = new Scanner(System.in);
         System.out.print("\nDigite uma palavra para buscar o(s) jogo(s): ");
-        String termo = sc.nextLine();
+        String termo = sc.nextLine().trim();    
         String palavraLimpa = termo.toLowerCase().trim();
         
         try {
             ElementoLista[] res = listaInvertida.read(palavraLimpa);
             if (res.length == 0) {
                 System.out.println("Nenhum jogo encontrado com a palavra: '" + palavraLimpa + "'");
-                sc.close();
                 return;
             }
             System.out.println("\n--- Jogos Encontrados ---");
@@ -656,6 +635,7 @@ public class TP1 {
             }
 
             RandomAccessFile arquivoFinal = new RandomAccessFile("dataBase/jogos_ordenado.db", "rw");
+            arquivoFinal.setLength(0);
             arquivoFinal.writeInt(0);
             int maiorId = 0;
 
@@ -805,10 +785,25 @@ public class TP1 {
             }
         }
 
-        public ArvoreB(RandomAccessFile arq, int ordem, long raiz) {
+        public ArvoreB(RandomAccessFile arq, int ordemParametro) throws IOException {
             this.arq = arq;
-            this.ordem = ordem;
-            this.raiz = raiz;
+            
+            // se o arquivo já existe e tem o cabeçalho (12 bytes)
+            if (this.arq.length() >= 12) {
+                this.arq.seek(0);
+                this.ordem = this.arq.readInt(); 
+                this.raiz = this.arq.readLong();
+            } else {
+                this.ordem = ordemParametro;
+                this.raiz = -1;
+                salvarCabecalho();
+            }
+        }
+
+        public void salvarCabecalho() throws IOException {
+            arq.seek(0);
+            arq.writeInt(this.ordem);
+            arq.writeLong(this.raiz);
         }
 
         public long getraiz() {
@@ -866,9 +861,10 @@ public class TP1 {
 
                 this.raiz = arq.length();
                 if (this.raiz == 0)
-                    this.raiz = 8; // preserva o cabecalho de 8 bytes
+                    this.raiz = 12; // CORREÇÃO: preserva o cabeçalho de 12 bytes (4 int + 8 long)
 
                 novaRaiz.salvarDisco(arq, this.raiz);
+                salvarCabecalho(); // Salva a nova raiz no byte 4 do arquivo
                 return;
             }
 
@@ -885,6 +881,7 @@ public class TP1 {
 
                 this.raiz = arq.length();
                 novaRaiz.salvarDisco(arq, this.raiz);
+                salvarCabecalho(); // Salva a nova raiz no byte 4 do arquivo
             }
         }
 
@@ -1240,15 +1237,13 @@ public class TP1 {
 
         public ListaInvertida() throws Exception {
             quantidadeDadosPorBloco = 1000;
-            nomeArquivoDicionario = "dicionario.listainv.db";
-            nomeArquivoBlocos = "blocos.listainv.db";
 
-            arqDicionario = new RandomAccessFile(nomeArquivoDicionario, "rw");
+            arqDicionario = new RandomAccessFile(caminhoDicionario, "rw");
             if(arqDicionario.length()<4) {    // cabeçalho do arquivo com número de entidades
             arqDicionario.seek(0);
             arqDicionario.writeInt(0);
             }
-            arqBlocos = new RandomAccessFile(nomeArquivoBlocos, "rw");
+            arqBlocos = new RandomAccessFile(caminhoBlocos, "rw");
 
             cacheDicionario = new HashMap<>();
             arqDicionario.seek(4);
@@ -1453,6 +1448,19 @@ public class TP1 {
                     System.out.print(lista.get(j) + " ");
                 System.out.println();
             }
+        }
+
+        public void limpar() throws Exception {
+            // 1. Limpa o cache (HashMap) da memória
+            cacheDicionario.clear();
+            
+            // 2. Trunca (zera) o tamanho dos arquivos físicos no disco
+            arqDicionario.setLength(0);
+            arqBlocos.setLength(0);
+            
+            // 3. Recria o cabeçalho inicial do dicionário
+            arqDicionario.seek(0);
+            arqDicionario.writeInt(0);
         }
 
     }

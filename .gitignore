@@ -1,0 +1,10 @@
+# Compilados
+*.class
+out/
+
+# Arquivo temporário do Code Runner
+tempCodeRunnerFile.java
+
+# Arquivos gerados pelo programa
+dataBase/*.db
+dataBase/*.bin
