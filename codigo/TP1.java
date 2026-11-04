@@ -13,6 +13,11 @@ import java.nio.file.Paths;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.util.HashMap;
+import java.nio.file.StandardCopyOption;
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.EOFException;
+import java.util.PriorityQueue;
 
 public class TP1 {
     private static final Scanner sc = new Scanner(System.in);
@@ -119,6 +124,9 @@ private static final String caminhoDicionario = DIR_DADOS + "dicionario.listainv
                 case 8:
                     buscarListaInv();
                     break;
+                    case 9:
+                comprimirBase();
+                break;
                 default:
                     System.out.println("Numero invalido!");
             }
@@ -139,15 +147,16 @@ private static final String caminhoDicionario = DIR_DADOS + "dicionario.listainv
     public static void criaMenu() {
         String titulo = "\n-----------Steam Games DB----------";
         String barra = "-----------------------------------\n";
-        String opcoes = String.format("\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s",
-                "[1] Carregar base de dados",
-                "[2] Inserir registro",
-                "[3] Ler registro (Sequencial)",
-                "[4] Atualizar registro",
-                "[5] Deletar registro",
-                "[6] Ordenar registros",
-                "[7] Buscar na Árvore B (Indexado)",
-                "[8] Buscar na lista invertida");
+        String opcoes = String.format("\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s",
+        "[1] Carregar base de dados",
+        "[2] Inserir registro",
+        "[3] Ler registro (Sequencial)",
+        "[4] Atualizar registro",
+        "[5] Deletar registro",
+        "[6] Ordenar registros",
+        "[7] Buscar na Árvore B (Indexado)",
+        "[8] Buscar na lista invertida",
+        "[9] Comprimir base de dados");
 
         System.out.println(titulo);
         System.out.println("Selecione a opção (ou 0 para Sair):");
@@ -1464,4 +1473,257 @@ private static final String caminhoDicionario = DIR_DADOS + "dicionario.listainv
         }
 
     }
+
+
+
+public final class Huffman {
+
+    public static final String NOME = "Huffman";
+
+    private Huffman() {}
+
+
+    private static final class No implements Comparable<No> {
+        final int simbolo;   // 0..255 nas folhas, -1 nos nós internos
+        final long freq;
+        final int ordem;     // desempate determinístico
+        final No esq, dir;
+
+        No(int simbolo, long freq, int ordem, No esq, No dir) {
+            this.simbolo = simbolo;
+            this.freq = freq;
+            this.ordem = ordem;
+            this.esq = esq;
+            this.dir = dir;
+        }
+
+        @Override
+        public int compareTo(No o) {
+            if (freq != o.freq) return Long.compare(freq, o.freq);
+            return Integer.compare(ordem, o.ordem);
+        }
+    }
+
+    private static No construirArvore(long[] freq) {
+        PriorityQueue<No> fila = new PriorityQueue<>();
+        for (int s = 0; s < 256; s++) {
+            if (freq[s] > 0) fila.add(new No(s, freq[s], s, null, null));
+        }
+        if (fila.isEmpty()) return null; // arquivo vazio
+
+        // Caso especial: só existe 1 símbolo distinto. Sem pai, o código teria
+        // tamanho 0. Criamos um pai falso para o código ser "0" (1 bit).
+        if (fila.size() == 1) {
+            No unico = fila.poll();
+            return new No(-1, unico.freq, 256, unico, null);
+        }
+
+        int ordem = 256;
+        while (fila.size() > 1) {
+            No a = fila.poll();
+            No b = fila.poll();
+            fila.add(new No(-1, a.freq + b.freq, ordem++, a, b));
+        }
+        return fila.poll();
+    }
+
+    private static void gerarCodigos(No no, long codigo, int tamanho, long[] codigos, int[] tamanhos) {
+        if (no == null) return;
+        if (no.simbolo >= 0) {
+            codigos[no.simbolo] = codigo;
+            tamanhos[no.simbolo] = tamanho;
+            return;
+        }
+        if (tamanho >= 63) {
+            // Só aconteceria com um arquivo gigantesco e distribuição patológica.
+            throw new IllegalStateException("Código de Huffman maior que 63 bits");
+        }
+        gerarCodigos(no.esq, codigo << 1, tamanho + 1, codigos, tamanhos);
+        gerarCodigos(no.dir, (codigo << 1) | 1, tamanho + 1, codigos, tamanhos);
+    }
+
+    // compressão
+
+    public static Compressao comprimir(Path origem, Path destino) throws IOException {
+        long inicio = System.nanoTime();
+
+        byte[] dados = Files.readAllBytes(origem);
+
+        long[] freq = new long[256];
+        for (byte b : dados) freq[b & 0xFF]++;
+
+        No raiz = construirArvore(freq);
+        long[] codigos = new long[256];
+        int[] tamanhos = new int[256];
+        gerarCodigos(raiz, 0L, 0, codigos, tamanhos);
+
+        try (DataOutputStream out = new DataOutputStream(new BufferedOutputStream(Files.newOutputStream(destino)))) {
+            // cabeçalho do arquivo comprimido
+            out.writeInt(dados.length);
+            int distintos = 0;
+            for (int s = 0; s < 256; s++) if (freq[s] > 0) distintos++;
+            out.writeShort(distintos);
+            for (int s = 0; s < 256; s++) {
+                if (freq[s] > 0) {
+                    out.writeByte(s);
+                    out.writeInt((int) freq[s]);
+                }
+            }
+
+            // dados codificados, bit a bit (MSB primeiro)
+            int buffer = 0;
+            int nBits = 0;
+            for (byte b : dados) {
+                int s = b & 0xFF;
+                long cod = codigos[s];
+                for (int i = tamanhos[s] - 1; i >= 0; i--) {
+                    buffer = (buffer << 1) | (int) ((cod >>> i) & 1L);
+                    if (++nBits == 8) {
+                        out.write(buffer);
+                        buffer = 0;
+                        nBits = 0;
+                    }
+                }
+            }
+            if (nBits > 0) out.write(buffer << (8 - nBits)); // completa com zeros
+        }
+
+        long fim = System.nanoTime();
+        return new Compressao(NOME, Files.size(origem), Files.size(destino), fim - inicio);
+    }
+
+    //  descompressão
+
+    public static Compressao descomprimir(Path origem, Path destino) throws IOException {
+        long inicio = System.nanoTime();
+
+        byte[] saida;
+        try (DataInputStream in = new DataInputStream(new BufferedInputStream(Files.newInputStream(origem)))) {
+            int tamanhoOriginal = in.readInt();
+            int distintos = in.readUnsignedShort();
+
+            long[] freq = new long[256];
+            for (int i = 0; i < distintos; i++) {
+                int s = in.readUnsignedByte();
+                freq[s] = in.readInt() & 0xFFFFFFFFL;
+            }
+
+            No raiz = construirArvore(freq);
+            saida = new byte[tamanhoOriginal];
+
+            No atual = raiz;
+            int escritos = 0;
+            while (escritos < tamanhoOriginal) {
+                int b = in.read();
+                if (b < 0) throw new EOFException("Arquivo comprimido truncado");
+                for (int bit = 7; bit >= 0 && escritos < tamanhoOriginal; bit--) {
+                    atual = ((b >> bit) & 1) == 0 ? atual.esq : atual.dir;
+                    if (atual.simbolo >= 0) {
+                        saida[escritos++] = (byte) atual.simbolo;
+                        atual = raiz;
+                    }
+                }
+            }
+        }
+
+        Files.write(destino, saida);
+
+        long fim = System.nanoTime();
+        return new Compressao(NOME, Files.size(origem), Files.size(destino), fim - inicio);
+    }
+}
+
+
+
+public static void comprimirBase() {
+    Path dados = Paths.get(caminhoBinario);   // dataBase/jogos.db
+
+    if (!Files.exists(dados)) {
+        System.out.println("Arquivo " + caminhoBinario + " não encontrado. Carregue a base primeiro (opção 1).");
+        return;
+    }
+
+    try {
+        int x = AuxCompressao.proximaVersao(dados, "Huffman");
+        Path destino = AuxCompressao.nomeComprimido(dados, "Huffman", x);
+
+        Compressao r = Huffman.comprimir(dados, destino);
+
+        System.out.println("\n=== Compressão (versão " + x + ") ===");
+        System.out.println("Arquivo gerado: " + destino.getFileName());
+        System.out.println(r);
+
+        // ---- TESTE: remover depois que confirmar que funciona ----
+        Path tmp = Paths.get(DIR_DADOS + "teste_descomprimido.tmp");
+        Compressao d = Huffman.descomprimir(destino, tmp);
+        boolean igual = Files.mismatch(dados, tmp) == -1;
+        Files.delete(tmp);
+        System.out.println("Descompressão: " + d.tempoMs() + " ms");
+        System.out.println(igual ? "Verificação: OK (idêntico ao original)" : "Verificação: FALHOU");
+        // -----------------------------------------------------------
+
+    } catch (IOException e) {
+        System.out.println("Erro ao comprimir: " + e.getMessage());
+    }
+}
+
+
+public record Compressao(String algoritmo, long tamanhoEntrada, long tamanhoSaida, long tempoNs) {
+
+    /** Positivo = ganho (arquivo diminuiu). Negativo = perda (arquivo aumentou). */
+    public double ganhoPercentual() {
+        if (tamanhoEntrada == 0) return 0.0;
+        return (1.0 - (double) tamanhoSaida / tamanhoEntrada) * 100.0;
+    }
+
+    public double tempoMs() {
+        return tempoNs / 1_000_000.0;
+    }
+
+    @Override
+    public String toString() {
+        return String.format("%-8s | %d -> %d bytes | %s%.2f%% | %.3f ms",
+                algoritmo, tamanhoEntrada, tamanhoSaida,
+                ganhoPercentual() >= 0 ? "ganho " : "perda ", Math.abs(ganhoPercentual()), tempoMs());
+    }
+}
+
+
+// Funções auxiliares usadas pelos dois algoritmos (Huffman e LZW).
+public static final class AuxCompressao{
+
+    private AuxCompressao() {}
+
+    // Gera o caminho do arquivo comprimido no formato solicitado
+
+    public static Path nomeComprimido(Path original, String algoritmo, int versao) {
+        String nome = original.getFileName().toString();
+        int ponto = nome.lastIndexOf('.');
+        String base = ponto > 0 ? nome.substring(0, ponto) : nome;
+        String ext = ponto > 0 ? nome.substring(ponto) : "";
+        return original.resolveSibling(base + algoritmo + "Compressao" + versao + ext);
+    }
+
+    // Primeira versão X ainda não usada por NENHUM dos algoritmos informados.
+    public static int proximaVersao(Path original, String... algoritmos) {
+        int versao = 1;
+        while (true) {
+            boolean usada = false;
+            for (String alg : algoritmos) {
+                if (Files.exists(nomeComprimido(original, alg, versao))) {
+                    usada = true;
+                    break;
+                }
+            }
+            if (!usada) return versao;
+            versao++;
+        }
+    }
+
+    // Substitui o arquivo de dados pelo arquivo descomprimido.
+    
+    public static void substituirArquivoDeDados(Path descomprimido, Path arquivoDeDados) throws IOException {
+        Files.move(descomprimido, arquivoDeDados, StandardCopyOption.REPLACE_EXISTING);
+    }
+}
 }
