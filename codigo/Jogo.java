@@ -59,8 +59,16 @@ public class Jogo{
         this.game_description = "";
     }
 
-    public void setID(int id){
+    public void setID(int id) {
         this.game_id = id;
+    }
+
+    public String getName() {
+        return game_name;
+    }
+
+    public String getDescription() {
+        return game_description;
     }
 
     public byte[] toByteArray() throws IOException {
