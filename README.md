@@ -20,6 +20,8 @@
 
 > **[Assista ao vídeo de demonstração e explicação do código no YouTube - TP2](https://youtu.be/XZ43-Km3MD0)**
 
+> **[Assista ao vídeo de demonstração e explicação do código no YouTube - TP3](https://youtu.be/jqkOoOefp18)**
+
 ---
 
 ## Sobre o Projeto
