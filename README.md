@@ -79,7 +79,7 @@ O sistema implementa a ordenação dos registros armazenados no arquivo binário
 
 ## ESTRUTURA DE REGISTRO
 
-````text
+```text
 [ Cabeçalho: 4 bytes (Último ID) ]
 (Início da sequência de jogos)
   ├── [ Lápide: 1 byte (boolean) ]             <-- gravado por raf.writeBoolean(false)
@@ -91,6 +91,7 @@ O sistema implementa a ordenação dos registros armazenados no arquivo binário
        ├── Preço: 4 bytes (float)
        ├── Gêneros: 2 bytes (tamanho) + P bytes (texto UTF-8)
        └── Descrição: 2 bytes (tamanho) + M bytes (texto UTF-8)
+```
 
 ##  **CASAMENTO DE PADRÕES**
   Utilizou-se o algoritmo KMP e o algoritmo Shift-and (Conhecido também como Bitap algorithm), o motivo para a escolha desses algoritmos é:
@@ -98,4 +99,3 @@ O sistema implementa a ordenação dos registros armazenados no arquivo binário
 *  **KMP:** A escolha do KMP se deve a ele ser um dos algoritmos mais utilizados e comentados na literatura e possuir uma eficiência ótima de O(N+M). Além disso, seu código é pequeno e a compreensão dele é relativamente simples, o que para um trabalho deste tamanho é algo a ser priorizado.
 
 *  **Shift-And:** A sua escolha ocorre por ser, às vezes, mais rápido e mais simples que o KMP, porém tem como sua principal limitação a restrição de 64 caracteres no padrão de busca. Essa limitação ocorre porque 64 bits é o tamanho nativo de uma "palavra" na arquitetura de processadores modernos. Entretanto, devido ao escopo deste presente trabalho, uma busca com tamanho máximo de 64 caracteres é aceitável se levarmos em conta os ganhos em velocidade e a simplicidade que o algoritmo traz. Para além disso, buscas com termos maiores que 64 caracteres raramente são feitas.
-
