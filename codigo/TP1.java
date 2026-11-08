@@ -1614,7 +1614,7 @@ public class TP1 {
                 int escritos = 0;
                 while (escritos < tamanhoOriginal) {
                     int b = in.read();
-                    if (b < 0) throw new EOFException("Arquivo comprimido truncado");
+                    if (b < 0) throw new EOFException("Arquivo comprimido incompleto");
 
                     for (int bit = 7; bit >= 0 && escritos < tamanhoOriginal; bit--) {
                         atual = ((b >> bit) & 1) == 0 ? atual.esq : atual.dir;
@@ -1671,7 +1671,7 @@ public class TP1 {
             }
     
             void finalizar() throws IOException {
-                if (nAcc > 0) out.write((int) ((acc << (8 - nAcc)) & 0xFF)); // completa com zeros
+                if (nAcc > 0) out.write((int) ((acc << (8 - nAcc)) & 0xFF)); 
                 nAcc = 0;
                 acc = 0;
             }
@@ -1689,7 +1689,7 @@ public class TP1 {
             int ler(int largura) throws IOException {
                 while (nAcc < largura) {
                     int b = in.read();
-                    if (b < 0) throw new EOFException("Arquivo comprimido truncado");
+                    if (b < 0) throw new EOFException("Arquivo comprimido incompleto");
                     acc = (acc << 8) | b;
                     nAcc += 8;
                 }
@@ -1712,9 +1712,6 @@ public class TP1 {
     
                 EscritorBits bits = new EscritorBits(out);
     
-                // chave = (código do prefixo << 8) | próximo byte   ->   código da sequência
-                // As 256 sequências de 1 byte (dicionário inicial) não ficam no mapa,
-                // pois o código delas é o próprio valor do byte.
                 HashMap<Integer, Integer> dicionario = new HashMap<>(1 << 18);
                 int proximo = INICIAL;
                 int w = -1; // código da sequência atual (-1 = vazia)
@@ -1773,7 +1770,7 @@ public class TP1 {
                 }
     
                 int proximo = INICIAL;
-                int anterior = -1; // -1 = próximo código é o primeiro (início ou pós-reinício)
+                int anterior = -1; 
                 int escritos = 0;
     
                 while (escritos < tamanhoOriginal) {
@@ -1851,28 +1848,21 @@ public class TP1 {
             else
                 System.out.println("Espaço: empate");
 
-            if (h.tempoNs() < l.tempoNs())
-                System.out.println("Tempo: Huffman foi mais rápido");
-            else if (l.tempoNs() < h.tempoNs())
-                System.out.println("Tempo: LZW foi mais rápido");
-            else
+            if (h.tempoNs() < l.tempoNs()){
+                System.out.println("Tempo: Huffman foi mais rápido");}
+            else if (l.tempoNs() < h.tempoNs()){
+                System.out.println("Tempo: LZW foi mais rápido");}
+            else{
                 System.out.println("Tempo: empate");
-
-            // ---- TESTE: remover depois que confirmar que funciona ----
-            Path tmp = Paths.get(DIR_DADOS + "teste_descomprimido.tmp");
-            Huffman.descomprimir(destH, tmp);
-            System.out.println("Verificação Huffman: " + (Files.mismatch(dados, tmp) == -1 ? "OK" : "FALHOU"));
-            LZW.descomprimir(destL, tmp);
-            System.out.println("Verificação LZW: " + (Files.mismatch(dados, tmp) == -1 ? "OK" : "FALHOU"));
-            Files.delete(tmp);
-            // -----------------------------------------------------------
+            }
+           
 
         } catch (IOException e) {
             System.out.println("Erro ao comprimir: " + e.getMessage());
         }
     }
 
-    // Armazena os resultados e as métricas da compressão ou descompressão.
+    // Armazena os resultados da compressão ou descompressão.
     public record Compressao(String algoritmo, long tamanhoEntrada, long tamanhoSaida, long tempoNs) {
 
         // Calcula a porcentagem de redução ou aumento do arquivo.
@@ -1917,12 +1907,6 @@ public class TP1 {
             return;
         }
 
-        System.out.print("Isso vai SUBSTITUIR " + dados.getFileName() + " pelo conteúdo da versão " + x + ". Continuar? (s/n): ");
-        if (!sc.nextLine().trim().equalsIgnoreCase("s")) {
-            System.out.println("Cancelado.");
-            return;
-        }
-
         Path tmpH = Paths.get(DIR_DADOS + "descompHuffman.tmp");
         Path tmpL = Paths.get(DIR_DADOS + "descompLZW.tmp");
 
@@ -1941,7 +1925,6 @@ public class TP1 {
             else
                 System.out.println("Empate no tempo");
 
-            // segurança: os dois algoritmos precisam ter devolvido o mesmo arquivo
             if (Files.mismatch(tmpH, tmpL) != -1) {
                 System.out.println("ERRO: Huffman e LZW geraram arquivos diferentes. " + dados.getFileName() + " NÃO foi alterado.");
                 return;
