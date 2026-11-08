@@ -2162,7 +2162,6 @@ public class TP1 {
             // Verifica se o bit de maior ordem (relativo ao tamanho do padrão) está ativo
             if ((a & hit) != 0) {
                 return true;
-                //System.out.println("Encontrado na posição " + (i - m + 1));
             }
         }
         return false;
