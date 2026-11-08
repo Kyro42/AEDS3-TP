@@ -133,7 +133,10 @@ public class TP1 {
                     descomprimirBase();
                     break;
                 case 11:
-                    AuxKMP();
+                    AuxKMP_Shift(0);
+                    break;
+                case 12:
+                    AuxKMP_Shift(1);
                     break;
                 default:
                     System.out.println("Numero invalido!");
@@ -153,7 +156,7 @@ public class TP1 {
     public static void criaMenu() {
         String titulo = "\n-----------Steam Games DB----------";
         String barra = "-----------------------------------\n";
-        String opcoes = String.format("\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s",
+        String opcoes = String.format("\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s",
         "[1] Carregar base de dados",
         "[2] Inserir registro",
         "[3] Ler registro (Sequencial)",
@@ -164,7 +167,8 @@ public class TP1 {
         "[8] Buscar na lista invertida",
         "[9] Comprimir base de dados",
         "[10] Descomprimir base de dados",
-        "[11] Busca com KMP");
+        "[11] Busca com KMP",
+        "[12] Busca com Shift-And (Bitap)");
 
         System.out.println(titulo);
         System.out.println("Selecione uma opção (ou 0 para sair):");
@@ -1995,13 +1999,19 @@ public class TP1 {
         }
     }
 
-    public static void AuxKMP() {
-        //Ideia: carrega registros na RAM (10K para teste)
-        //passa cada registro no KMP. Primeiro nome, depois descrição caso não encontre
+    public static void AuxKMP_Shift(int metodo) {
+        //Ideia: 
+        //carrega registros na RAM (10K para teste)
+        //passa cada registro no KMP. Primeiro nome, depois descrição caso não encontre.
         //achou? adiciona no arraylist, não achou? proximo registro
         //itera ate o ultimo registro
         System.out.println("Digite a palavra ou frase que deseja buscar: ");
+        System.out.println("(Máximo 64 caracteres)");
         String padrao = sc.nextLine();
+        if(padrao.length()>64){
+            System.out.println("Busca excede 64 caracteres. Abortando...");
+            return;
+        }
         padrao = padrao.toLowerCase();
         RandomAccessFile arq;
         int tam = 0;
@@ -2021,10 +2031,20 @@ public class TP1 {
                         byte[] ba = new byte[tam];
                         arq.readFully(ba);
                         atual.fromByteArray(ba);
-                        if (KMPSearch(padrao, atual.getName().toLowerCase())) {
-                            encontrados.add(atual);
-                        } else if (KMPSearch(padrao, atual.getDescription().toLowerCase())) {
-                            encontrados.add(atual);
+                        String nomeJogo = atual.getName().toLowerCase();
+                        String descJogo = atual.getDescription().toLowerCase();
+                        if (metodo == 0) {
+                            if (KMPSearch(padrao, nomeJogo)) {
+                                encontrados.add(atual);
+                            } else if (KMPSearch(padrao, descJogo)) {
+                                encontrados.add(atual);
+                            }
+                        } else {
+                            if (shiftAndSearch(padrao, nomeJogo)) {
+                                encontrados.add(atual);
+                            } else if (shiftAndSearch(padrao, descJogo)) {
+                                encontrados.add(atual);
+                            }
                         }
                     } else {
                         arq.skipBytes(tam);
@@ -2109,21 +2129,22 @@ public class TP1 {
         //System.out.println(Arrays.toString(lps));
     }
     
-    public static void shiftAndSearch(String pattern, String text) {
-        int m = pattern.length();
-        int n = text.length();
+    public static boolean shiftAndSearch(String padrao, String txt) {
+        int m = padrao.length();
+        int n = txt.length();
         
         if (m > 64) {
             System.out.println("Erro: O padrão excede o limite de 64 caracteres do tipo long.");
-            return;
+            return false;
         }
         
-        // Tabela de máscaras de bits para cada caractere (suportando a tabela ASCII estendida)
-        long[] B = new long[256];
+        // Tabela de máscaras de bits para cada caractere 
+        // (65536 = UTF-16. Para o codigo não quebrar quando ler um caracter fora dos 255 da tabela ASCII)
+        long[] B = new long[65536];
         
         // Montagem da matriz com a Máscara de Bits
         for (int i = 0; i < m; i++) {
-            char c = pattern.charAt(i);
+            char c = padrao.charAt(i);
             B[c] = B[c] | (1L << i);
         }
         
@@ -2132,17 +2153,19 @@ public class TP1 {
         
         // Varrendo todo o texto
         for (int i = 0; i < n; i++) {
-            char c = text.charAt(i);
-        
+            char c = txt.charAt(i);
+
             // Shift e AND com a máscara do caractere atual
             // Se o caractere não existir no padrão, B[c] será 0
             a = ((a << 1) | 1L) & B[c];
-        
+
             // Verifica se o bit de maior ordem (relativo ao tamanho do padrão) está ativo
             if ((a & hit) != 0) {
-                System.out.println("Encontrado na posição " + (i - m + 1));
+                return true;
+                //System.out.println("Encontrado na posição " + (i - m + 1));
             }
         }
+        return false;
     }
 
 }
