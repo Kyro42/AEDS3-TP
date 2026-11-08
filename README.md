@@ -93,6 +93,35 @@ O sistema implementa a ordenação dos registros armazenados no arquivo binário
        └── Descrição: 2 bytes (tamanho) + M bytes (texto UTF-8)
 ```
 
+## Compressão de Dados (Huffman e LZW)
+ 
+A opção **[9]** do menu comprime o `jogos.db` com dois algoritmos, **Huffman** e **LZW**, e a opção **[10]** descomprime. Os dois trabalham sobre os **bytes do arquivo inteiro**, então cabeçalho, lápides e indicadores de tamanho também são comprimidos.
+ 
+Os arquivos gerados seguem o formato `nomeArquivo` + `NomeAlgoritmo` + `Compressao` + `X`, em que `X` é a versão (ex.: `jogosHuffmanCompressao1.db` e `jogosLZWCompressao1.db`).
+ 
+### Huffman
+ 
+Dá **códigos curtos para os bytes que aparecem muito** e códigos longos para os que aparecem pouco.
+ 
+1. Conta quantas vezes cada byte aparece no arquivo.
+2. Monta uma árvore juntando sempre os dois bytes (ou grupos) menos frequentes.
+3. O caminho da raiz até cada byte vira o seu código (esquerda = `0`, direita = `1`).
+4. Grava a tabela de frequências e depois os bits de cada byte.
+Na descompressão, a árvore é refeita a partir da tabela de frequências e os bits são lidos de volta em bytes.
+ 
+### LZW
+ 
+Aproveita **sequências de bytes que se repetem**, guardando-as em um dicionário.
+ 
+1. O dicionário começa com **256 entradas**, uma para cada valor de byte (códigos 0 a 255).
+2. Ao ler o arquivo, procura a maior sequência que já está no dicionário. Quando aparece uma sequência nova, grava o código da anterior e cadastra a nova com o próximo código (256, 257, ...).
+3. Os códigos usam de **9 a 16 bits**, crescendo junto com o dicionário. Quando ele enche (65536 entradas), é reiniciado.
+Na descompressão, o dicionário é reconstruído sozinho a partir dos códigos, sem ser gravado no arquivo.
+ 
+### Comparação
+ 
+Ao comprimir, o programa mostra para cada algoritmo o **tamanho antes e depois**, a **porcentagem de ganho ou perda** e o **tempo de execução**, e indica qual foi melhor. Ao descomprimir, o usuário informa a versão `X`, o programa mostra o tempo de cada algoritmo e o `jogos.db` é substituído pelo arquivo descomprimido.
+
 ##  **CASAMENTO DE PADRÕES**
   Utilizou-se o algoritmo KMP e o algoritmo Shift-and (Conhecido também como Bitap algorithm), o motivo para a escolha desses algoritmos é:
 
